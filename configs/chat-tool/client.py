@@ -12,7 +12,7 @@ def clear_screen():
 def print_banner():
     clear_screen()
     print("=" * 60)
-    print("Termux Chat Client (Supports Text/File Transfer)")
+    print("Chat Client (Supports Text/File Transfer)")
     print("=" * 60)
 
 def get_file_checksum(file_path):
@@ -95,7 +95,7 @@ def send_file(sock, file_path):
 
 def start_client():
     print_banner()
-    server_ip = input("Enter PC's IP address: ")
+    server_ip = input("Enter Server's IP address: ")
     server_port = 12345
     
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -128,9 +128,9 @@ def start_client():
                         # Receive text content
                         message = recv_all(client, text_len).decode('utf-8')
                         print("\n" + "-" * 40)
-                        print(f"PC >\n{message}")
+                        print(f"Server >\n{message}")
                         print("-" * 40)
-                        print("Phone > ", end="", flush=True)
+                        print("Client > ", end="", flush=True)
                         
                     elif msg_type == b'F':  # File transfer
                         # Read filename length (1 byte)
@@ -184,7 +184,7 @@ def start_client():
                         else:
                             print(f"File incomplete! ({received}/{file_size} bytes received)")
                         
-                        print("Phone > ", end="", flush=True)
+                        print("Client > ", end="", flush=True)
                         
                 except Exception as e:
                     print(f"\nConnection error: {e}")
@@ -196,7 +196,7 @@ def start_client():
         recv_thread.start()
         
         while True:
-            print("Phone > ", end="", flush=True)
+            print("Client > ", end="", flush=True)
             command = sys.stdin.readline().strip()
             
             if not command:

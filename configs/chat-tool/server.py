@@ -13,7 +13,7 @@ def clear_screen():
 def print_banner():
     clear_screen()
     print("=" * 60)
-    print("PC Chat Server (Supports Text/File Transfer)")
+    print("Chat Server (Supports Text/File Transfer)")
     print("=" * 60)
 
 def get_file_checksum(file_path):
@@ -67,7 +67,7 @@ def handle_client(client_socket, client_address):
                     print("\n" + "-" * 40)
                     print(f"Phone >\n{message}")
                     print("-" * 40)
-                    print("PC > ", end="", flush=True)
+                    print("Server > ", end="", flush=True)
                     
                 elif msg_type == b'F':  # File transfer
                     # Read filename length (1 byte)
@@ -121,7 +121,7 @@ def handle_client(client_socket, client_address):
                     else:
                         print(f"File incomplete! ({received}/{file_size} bytes received)")
                     
-                    print("PC > ", end="", flush=True)
+                    print("Server > ", end="", flush=True)
                     
             except Exception as e:
                 print(f"\nConnection error: {e}")
@@ -244,7 +244,7 @@ def start_server(host='0.0.0.0', port=12345):
     try:
         while True:
             try:
-                print("PC > ", end="", flush=True)
+                print("Server > ", end="", flush=True)
                 command = sys.stdin.readline().strip()
                 
                 if not command:
