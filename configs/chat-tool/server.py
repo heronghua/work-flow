@@ -65,7 +65,7 @@ def handle_client(client_socket, client_address):
                     # Receive text content
                     message = recv_all(client_socket, text_len).decode('utf-8')
                     print("\n" + "-" * 40)
-                    print(f"Phone >\n{message}")
+                    print(f"Client >\n{message}")
                     print("-" * 40)
                     print("Server > ", end="", flush=True)
                     
@@ -127,7 +127,7 @@ def handle_client(client_socket, client_address):
                 print(f"\nConnection error: {e}")
                 break
     
-    print(f"\nPhone connected: {client_address[0]}:{client_address[1]}")
+    print(f"\nClient connected: {client_address[0]}:{client_address[1]}")
     
     # Start message receiving thread
     recv_thread = threading.Thread(target=receive_thread)
