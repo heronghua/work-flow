@@ -28,7 +28,7 @@ export PATH=${ANDROID_SDK_ROOT}/tools:${ANDROID_SDK_ROOT}/platform-tools:${ANDRO
 export PATH=/opt/git/bin:$PATH
 
 # setting for aosp build
-export LC_ALL=C
+#export LC_ALL=C
 export WITH_DEXPREOPT=false
 #export TMPDIR=/home/heronghua/tmp
 export BRANCH_TO_BUILD='android-8.1.0_r18'
