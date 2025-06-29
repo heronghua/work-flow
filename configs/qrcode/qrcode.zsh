@@ -24,7 +24,8 @@ qr() {
     fi
     
     # 直接在终端显示二维码
-    qrencode -t ANSIUTF8 "$input"
+    # qrencode -t ANSIUTF8 "$input"
+    qrencode -m 2 -t ANSI "$input"
 }
 
 # 添加在线服务选项
