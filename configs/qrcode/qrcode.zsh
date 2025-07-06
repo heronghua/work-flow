@@ -49,3 +49,7 @@ qrcode-online() {
     echo  # 添加空行
 }
 
+
+wifi() {
+        qr "f"
+}

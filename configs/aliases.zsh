@@ -35,3 +35,5 @@ export BRANCH_TO_BUILD='android-8.1.0_r18'
 
 #ollama
 export OLLAMA_HOST=127.0.0.1:11434
+
+export PATH=/sbin:$PATH
