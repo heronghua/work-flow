@@ -14,23 +14,14 @@
 #include <filesystem>
 #include <cassert>
 #include <iostream>
+#include <memory>
+#include <cstring>
+#include <unordered_map>
 
 namespace fs = std::filesystem;
 
 /**
- * @brief 轻量级性能分析工具，生成 Chrome Tracing 格式的 JSON 文件
- * 
- * 使用示例：
- *   Systrace::get().beginEvent("MyEvent");
- *   // ... 代码 ...
- *   Systrace::get().endEvent("MyEvent");
- *   Systrace::get().saveToFile("trace.json");
- * 
- * 或使用 RAII 包装器：
- *   {
- *     AutoTrace trace("ScopeName");
- *     // ... 代码 ...
- *   } // 自动结束事件
+ * @brief 跨平台性能分析工具，支持线程名称和内存追踪（兼容Cygwin）
  */
 class Systrace {
 public:
@@ -87,6 +78,37 @@ public:
     }
 
     /**
+     * @brief 添加内存使用事件
+     * @param usage 内存使用量(KB)
+     */
+    void memoryEvent(size_t usage) {
+        counterEvent("MemoryUsage", static_cast<int>(usage));
+    }
+
+    /**
+     * @brief 设置当前线程名称
+     * @param name 线程名称
+     */
+    void setThreadName(const std::string& name) {
+        std::lock_guard<std::mutex> lock(thread_name_mutex_);
+        thread_names_[getCurrentThreadId()] = name;
+    }
+
+    /**
+     * @brief 获取当前线程名称
+     */
+    std::string getThreadName(uint32_t tid) const {
+        std::lock_guard<std::mutex> lock(thread_name_mutex_);
+        auto it = thread_names_.find(tid);
+        if (it != thread_names_.end()) {
+            return it->second;
+        }
+        
+        // 如果未设置名称，返回默认名称
+        return "Thread-" + std::to_string(tid);
+    }
+
+    /**
      * @brief 保存跟踪数据到文件
      * @param filepath 输出文件路径
      */
@@ -98,9 +120,38 @@ public:
             return;
         }
 
+        // 添加元数据事件：线程名称
+        std::vector<Event> metadata_events;
+        {
+            std::lock_guard<std::mutex> name_lock(thread_name_mutex_);
+            auto start_time = std::chrono::high_resolution_clock::now();
+            
+            for (const auto& [tid, name] : thread_names_) {
+                Event md_event;
+                md_event.name = "thread_name";
+                md_event.type = 'M';
+                md_event.tid = tid;
+                md_event.ts = start_time;
+                md_event.args = "{\"name\":\"" + escapeJson(name) + "\"}";
+                metadata_events.push_back(md_event);
+            }
+        }
+
+        // 合并元数据事件和普通事件
+        std::vector<Event> all_events;
+        all_events.reserve(metadata_events.size() + events_.size());
+        all_events.insert(all_events.end(), metadata_events.begin(), metadata_events.end());
+        all_events.insert(all_events.end(), events_.begin(), events_.end());
+
+        // 按时间戳排序
+        std::sort(all_events.begin(), all_events.end(), [](const Event& a, const Event& b) {
+            return a.ts < b.ts;
+        });
+
+        // 写入文件
         file << "[\n";
         bool first = true;
-        for (const auto& event : events_) {
+        for (const auto& event : all_events) {
             auto us = std::chrono::time_point_cast<std::chrono::microseconds>(event.ts);
             auto epoch = us.time_since_epoch();
             auto value = std::chrono::duration_cast<std::chrono::microseconds>(epoch).count();
@@ -123,9 +174,9 @@ public:
         }
         file << "\n]";
         
-        std::cout << "Systrace: Saved " << events_.size() 
+        std::cout << "Systrace: Saved " << all_events.size() 
                   << " events to " << filepath << std::endl;
-		std::cout << "Open chrome://tracing in Chrome browser and load this file for visualization." << std::endl;
+        std::cout << "Open chrome://tracing in Chrome browser and load this file for visualization." << std::endl;
     }
 
     /**
@@ -151,10 +202,24 @@ public:
     };
 
     /**
-     * @brief 获取当前线程的跟踪ID
+     * @brief 获取当前线程的跟踪ID（兼容Cygwin）
      */
     uint32_t getCurrentThreadId() const {
-        return getThreadId();
+        static std::mutex id_mutex;
+        static std::unordered_map<std::thread::id, uint32_t> thread_id_map;
+        static uint32_t next_id = 1;
+        
+        auto this_id = std::this_thread::get_id();
+        std::lock_guard<std::mutex> lock(id_mutex);
+        
+        auto it = thread_id_map.find(this_id);
+        if (it != thread_id_map.end()) {
+            return it->second;
+        }
+        
+        uint32_t id = next_id++;
+        thread_id_map[this_id] = id;
+        return id;
     }
 
 private:
@@ -167,10 +232,11 @@ private:
 
     void addEvent(const std::string& name, char type, const std::string& args = "") {
         std::lock_guard<std::mutex> lock(mutex_);
+        uint32_t tid = getCurrentThreadId();
         events_.push_back({
             name, 
             type,
-            getThreadId(),
+            tid,
             std::chrono::high_resolution_clock::now(),
             args
         });
@@ -192,27 +258,11 @@ private:
         }
         return ss.str();
     }
-    
-    uint32_t getThreadId() const {
-        static std::mutex id_mutex;
-        static std::map<std::thread::id, uint32_t> thread_ids;
-        static uint32_t next_id = 1;
-        
-        auto this_id = std::this_thread::get_id();
-        std::lock_guard<std::mutex> lock(id_mutex);
-        
-        auto it = thread_ids.find(this_id);
-        if (it != thread_ids.end()) {
-            return it->second;
-        }
-        
-        uint32_t id = next_id++;
-        thread_ids[this_id] = id;
-        return id;
-    }
 
     mutable std::mutex mutex_;
+    mutable std::mutex thread_name_mutex_;
     std::vector<Event> events_;
+    std::map<uint32_t, std::string> thread_names_;
 };
 
 // ===================== 简化使用的宏 =====================
@@ -222,6 +272,7 @@ private:
 #define TRACE_FUNCTION() Systrace::AutoTrace __trace_scope__(__FUNCTION__)
 #define TRACE_FUNCTION_ARGS(args) Systrace::AutoTrace __trace_scope__(__FUNCTION__, args)
 #define TRACE_COUNTER(name, value) Systrace::get().counterEvent(name, value)
+#define TRACE_MEMORY(usage) Systrace::get().memoryEvent(usage)
 #define TRACE_INSTANT(name) Systrace::get().instantEvent(name)
 #define TRACE_INSTANT_ARGS(name, args) Systrace::get().instantEvent(name, args)
 #define TRACE_BEGIN(name) Systrace::get().beginEvent(name)
@@ -229,12 +280,14 @@ private:
 #define TRACE_END(name) Systrace::get().endEvent(name)
 #define TRACE_SAVE(filepath) Systrace::get().saveToFile(filepath)
 #define TRACE_THREAD_ID() Systrace::get().getCurrentThreadId()
+#define TRACE_SET_THREAD_NAME(name) Systrace::get().setThreadName(name)
 #else
 #define TRACE_SCOPE(name) 
 #define TRACE_SCOPE_ARGS(name, args) 
 #define TRACE_FUNCTION() 
 #define TRACE_FUNCTION_ARGS(args) 
 #define TRACE_COUNTER(name, value) 
+#define TRACE_MEMORY(usage)
 #define TRACE_INSTANT(name)
 #define TRACE_INSTANT_ARGS(name, args)
 #define TRACE_BEGIN(name)
@@ -242,6 +295,7 @@ private:
 #define TRACE_END(name)
 #define TRACE_SAVE(filepath)
 #define TRACE_THREAD_ID()
+#define TRACE_SET_THREAD_NAME(name)
 #endif
 
 #endif // SYSTRACE_H
