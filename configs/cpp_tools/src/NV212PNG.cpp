@@ -1,4 +1,4 @@
-#define ENABLE_TRACING
+//#define ENABLE_TRACING
 #include <iostream>
 #include <fstream>
 #include <filesystem>
@@ -93,7 +93,7 @@ private:
     std::condition_variable cond_consumer_;
     std::condition_variable cond_producer_;
     std::atomic<bool> done_{false};
-    static const size_t max_size = 20; // 增大队列容量
+    static const size_t max_size = 10; // 增大队列容量
 };
 
 // 解析YUV文件名获取宽度和高度
