@@ -13,9 +13,9 @@ vi-fzf-completion() {
         # 使用 fd 或 find 查找文件
         local selected
         if command -v fd &>/dev/null; then
-            selected=$(fd --type f --hidden --exclude .git 2>/dev/null | fzf --reverse)
+            selected=$(fd --type f --hidden --exclude .git 2>/dev/null | fzf --reverse --preview "cat {}")
         else
-            selected=$(find . -type f 2>/dev/null | fzf --reverse)
+            selected=$(find . -type f 2>/dev/null | fzf --reverse --preview "cat {}")
         fi
 
         # 清除当前命令行
