@@ -17,9 +17,9 @@ vi-fzf-completion() {
         # 使用 fd 或 find 查找文件
         local selected
         if command -v fd &>/dev/null; then
-            selected=$(fd --type f --hidden --exclude .git 2>/dev/null | fzf --reverse --preview "batcat {}")
+            selected=$(fd --type f --hidden --exclude .git 2>/dev/null | fzf --reverse --preview 'bat --color=always {}')
         else
-            selected=$(find . -type f 2>/dev/null | fzf --reverse --preview "batcat {}")
+            selected=$(find . -type f 2>/dev/null | fzf --reverse --preview 'bat --color=always {}')
         fi
 
         # 清除当前命令行
