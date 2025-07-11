@@ -17,6 +17,11 @@ fi
 local M_COMPLETION_DIR="${0:A:h}"
 source ${M_COMPLETION_DIR}/base_completion.sh
 
+FZF_VI_OPTS="
+  --reverse
+  --preview 'bat --color=always {}'
+ "
+
 fzf-history-widget() {
     local original_buffer=$BUFFER
     local original_cursor=$CURSOR

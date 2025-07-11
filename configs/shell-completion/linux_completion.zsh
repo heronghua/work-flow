@@ -19,7 +19,10 @@ fi
 
 local M_COMPLETION_DIR="${0:A:h}"
 source ${M_COMPLETION_DIR}/base_completion.sh
-
+FZF_VI_OPTS="
+  --height 40% 
+  --reverse 
+"
 fzf-history-widget() {
     # 保存原始状态
     local original_buffer=$BUFFER

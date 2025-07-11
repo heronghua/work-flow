@@ -39,4 +39,6 @@ if [[ "$(uname)" =~ "Linux" ]]; then
         export OLLAMA_HOST=127.0.0.1:11434
 
         export PATH=/sbin:$PATH
+
+        alias bat=batcat
 fi

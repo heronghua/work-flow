@@ -9,7 +9,6 @@ export FZF_CTRL_R_OPTS="
 typeset -g FZF_VI_OPTS="
   --height 40%
   --reverse
-  --preview 'bat --color=always {}'
 "
 
 # 定义快捷键：vi + Tab 打开并执行 fzf
