@@ -6,6 +6,11 @@ export FZF_CTRL_R_OPTS="
   --color fg:252,bg:233,hl:220,fg+:252,bg+:235,hl+:220
   --color info:144,prompt:161,spinner:108,pointer:168,marker:168
 "
+typeset -g FZF_VI_OPTS="
+  --height 40%
+  --reverse
+  --preview 'bat --color=always {}'
+"
 
 # 定义快捷键：vi + Tab 打开并执行 fzf
 vi-fzf-completion() {
@@ -17,9 +22,9 @@ vi-fzf-completion() {
         # 使用 fd 或 find 查找文件
         local selected
         if command -v fd &>/dev/null; then
-            selected=$(fd --type f --hidden --exclude .git 2>/dev/null | fzf --reverse --preview 'bat --color=always {}')
+            selected=$(fd --type f --hidden --exclude .git 2>/dev/null | fzf ${=FZF_VI_OPTS})
         else
-            selected=$(find . -type f 2>/dev/null | fzf --reverse --preview 'bat --color=always {}')
+            selected=$(find . -type f 2>/dev/null | fzf ${=FZF_VI_OPTS})
         fi
 
         # 清除当前命令行

@@ -3,9 +3,17 @@ if [[ "$(uname)" =~ "CYGWIN_*" ]]; then
         echo "is cygwin"
         source ${M_COMPLETION_DIR}/base_completion.sh
         # 确保 fzf 已安装
+        FZF_VI_OPTS="
+          --reverse
+        "
         if ! command -v fzf &>/dev/null; then
             echo "警告: 请先安装 fzf: apt-cyg install fzf"
         fi
+
+        export FZF_CTRL_R_OPTS="
+            --reverse
+            --bind '?:toggle-preview'
+        "
 
         # 自定义 Ctrl+R 历史搜索小部件（修复多字节问题）
         fzf-history-widget() {
@@ -42,8 +50,4 @@ if [[ "$(uname)" =~ "CYGWIN_*" ]]; then
         # 绑定到 Ctrl+R
         bindkey '^R' fzf-history-widget
 
-        export FZF_CTRL_R_OPTS="
-            --reverse
-            --bind '?:toggle-preview'
-        "
 fi
