@@ -100,7 +100,7 @@ private:
 bool parse_resolution(const std::string& filename, int& width, int& height) {
     TRACE_FUNCTION();
     // 改进的正则表达式 - 处理多种常见格式
-    std::regex pattern(R"(.*_(\d+)_(\d+)\.yuv$)", std::regex_constants::icase);
+    std::regex pattern(R"([0-9A-Za-z_-]*PW(\d+)-PH(\d+))", std::regex_constants::icase);
     
     std::smatch matches;
     if (std::regex_search(filename, matches, pattern) && matches.size() == 3) {
@@ -282,7 +282,7 @@ int main(int argc, char* argv[]) {
 				
 				{
 					TRACE_SCOPE("ColorConversion");
-					cv::cvtColor(yuv_mat, bgr, cv::COLOR_YUV2BGR_I420);
+					cv::cvtColor(yuv_mat, bgr, cv::COLOR_YUV2BGR_NV21);
 				}
 				
 				// 记录内存使用量
@@ -353,7 +353,7 @@ int main(int argc, char* argv[]) {
             if (!entry.is_regular_file()) continue;
             
             const fs::path& file_path = entry.path();
-            if (file_path.extension() != ".yuv" && file_path.extension() != ".YUV") {
+            if (file_path.extension() != ".nv21" && file_path.extension() != ".NV21") {
                 continue;
             }
             
