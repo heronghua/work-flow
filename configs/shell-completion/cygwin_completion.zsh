@@ -1,6 +1,6 @@
 local M_COMPLETION_DIR="${0:A:h}"
 if [[ "$(uname)" =~ "CYGWIN_*" ]]; then
-        echo "is cygwin"
+        #echo "is cygwin"
         source ${M_COMPLETION_DIR}/base_completion.sh
         # 确保 fzf 已安装
         FZF_VI_OPTS="
