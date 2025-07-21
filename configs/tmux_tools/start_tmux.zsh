@@ -1,11 +1,12 @@
 TMUX_CONFIG_PATH="${0:A:h}/.tmux.conf"
+set_log_level info
 
 start_tmux() {
-        #echo "[start_tmux]"
+        log_enter
         local SESSION_MAIN="main"
         if [ -n "$TMUX" ]; then
                tmux switch-client -t $SESSION_MAIN 
-               #echo "aleady exists tmux session"
+               log_debug "aleady exists tmux session"
        else
 
 
