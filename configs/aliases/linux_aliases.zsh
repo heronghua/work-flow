@@ -1,5 +1,18 @@
 local M_ALIASES_DIR="${0:A:h}"
-if [[ "$(uname)" =~ "Linux" ]]; then
+is_linux() {
+    # 检查是否不是 Termux 且内核是 Linux
+    ! is_termux && [[ $(uname -s) == "Linux" ]]
+}
+
+is_termux() {
+    [[ -d "/data/data/com.termux/files/usr" ]] || 
+    [[ -n "$TERMUX_VERSION" ]] || 
+    [[ "$PREFIX" == "/data/data/com.termux/files/usr"* ]] ||
+    { [[ $(uname -o) == "Android" ]] && command -v pkg >/dev/null; }
+}
+
+if is_linux; then
+
         source ${M_ALIASES_DIR}/base_aliases.sh
         # my own configuration
         export REPO_URL='https://mirrors.tuna.tsinghua.edu.cn/git/git-repo'
@@ -39,6 +52,6 @@ if [[ "$(uname)" =~ "Linux" ]]; then
         export OLLAMA_HOST=127.0.0.1:11434
 
         export PATH=/sbin:$PATH
+        alias bat='batcat'
 
-        alias bat=batcat
 fi
