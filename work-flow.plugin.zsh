@@ -24,5 +24,4 @@ _load_configs(){
 }
 
 _load_configs
-autoload -Uz add-zsh-hook
-add-zsh-hook zshexit _cleanup_resources
+start_tmux
