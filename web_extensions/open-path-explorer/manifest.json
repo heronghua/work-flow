@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "Open Path With Explorer",
+  "version": "1.0",
+  "description": "右键菜单用本地文件浏览器打开选中的路径",
+  "permissions": ["contextMenus", "nativeMessaging"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "icons": {
+    "48": "icon.png"
+  },
+  "host_permissions": [
+    "file:///*"
+  ]
+}
