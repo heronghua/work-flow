@@ -10,7 +10,7 @@ ANR() {
 import os
 import re
 import sys
-from pathlib import Path
+import pyperclip  # 导入剪贴板模块
 
 def highlight_match(line, pattern):
     """高亮显示匹配部分"""
@@ -34,22 +34,28 @@ def highlight_match(line, pattern):
     return ''.join(highlighted)
 
 def main():
-    if len(sys.argv) < 3:
-        print("Usage: python3 script.py <directory> <regex_pattern>")
-        sys.exit(1)
+    # 固定正则表达式模式
+    pattern = "Anr in|Anr.*Total|Anr in.*media.module"
     
-    directory = sys.argv[1]
-    pattern = sys.argv[2]
+    # 从剪贴板获取目录路径
+    directory = pyperclip.paste().strip()
     
+    # 如果没有从剪贴板获取到有效路径，则提示用户输入
+    if not directory or not os.path.isdir(directory):
+        print(f"\033[1;33m剪贴板内容不是有效目录: '{directory}'\033[0m")
+        print("\033[1;32m请输入要搜索的文件夹路径:\033[0m")
+        directory = input("> ").strip()
+    
+    # 验证路径
     if not os.path.isdir(directory):
-        print(f"错误：路径不是目录 - '{directory}'")
+        print(f"\033[1;31m错误：路径不是目录 - '{directory}'\033[0m")
         sys.exit(1)
     
     # 编译正则表达式
     try:
         regex = re.compile(pattern)
     except re.error as e:
-        print(f"无效的正则表达式: {e}")
+        print(f"\033[1;31m无效的正则表达式: {e}\033[0m")
         sys.exit(1)
     
     # 用于存储结果 {文件路径: [(行号, 高亮内容)]}
@@ -96,41 +102,24 @@ PYTHON_END
   # 设置颜色
   local GREEN=$'\e[1;32m'
   local BLUE=$'\e[1;34m'
+  local YELLOW=$'\e[1;33m'
+  local RED=$'\e[1;31m'
   local RESET=$'\e[0m'
   
-  # 获取文件夹路径
-  echo "${GREEN}请输入要搜索的文件夹路径:${RESET}"
-  local folder_path
-  vared -p '> ' -c folder_path
-  
-  # 清理路径
-  folder_path=${folder_path//\'/}
-  folder_path=${folder_path//\"/}
-  folder_path=${folder_path%% #}
-  folder_path=${folder_path## #}
-  
-  # 验证路径
-  if [[ ! -d "$folder_path" ]]; then
-    echo "${BLUE}错误：路径不是目录 - '$folder_path'${RESET}"
-    rm -f "$py_script"
-    return 1
-  fi
-  
-  # 获取正则表达式
-  echo "\n${GREEN}请输入要搜索的正则表达式:${RESET}"
-  local pattern
-  vared -p '> ' -c pattern
-  
-  # 验证正则表达式
-  if [[ -z "$pattern" ]]; then
-    echo "${BLUE}错误：正则表达式不能为空${RESET}"
-    rm -f "$py_script"
-    return 1
+  # 检查是否已安装pyperclip
+  if ! python3 -c "import pyperclip" &>/dev/null; then
+    echo "${YELLOW}正在安装pyperclip模块...${RESET}"
+    if ! pip3 install pyperclip; then
+      echo "${RED}错误：无法安装pyperclip模块${RESET}"
+      rm -f "$py_script"
+      return 1
+    fi
   fi
   
   # 执行 Python 脚本
-  echo "\n${BLUE}正在搜索...${RESET}"
-  python3 "$py_script" "$folder_path" "$pattern"
+  echo "${GREEN}使用正则表达式: \"Anr in|Anr.*Total|Anr in.*media.module\"${RESET}"
+  echo "${BLUE}正在搜索...${RESET}"
+  python3 "$py_script"
   
   # 清理临时文件
   rm -f "$py_script"
