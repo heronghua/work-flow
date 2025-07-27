@@ -22,6 +22,7 @@ echo } > "%MANIFEST_PATH%"
 echo @echo off > %cd%\open_path_host.bat
 echo python %cd%\open_path_host.py >> %cd%/open_path_host.bat
 
+md "%LOCALAPPDATA%\Google\Chrome\User Data\NativeMessagingHosts"
 echo { > "%CHROME_MANIFEST_PATH%"
 echo   "name": "%HOST_NAME%", >> "%CHROME_MANIFEST_PATH%"
 echo   "description": "Open Path Host", >> "%CHROME_MANIFEST_PATH%" 
@@ -32,7 +33,7 @@ echo   "path": "!currentDir!\\open_path_host.bat", >> "%CHROME_MANIFEST_PATH%"
 
 echo   "type": "stdio", >> "%CHROME_MANIFEST_PATH%"
 echo   "allowed_origins": [ >> "%CHROME_MANIFEST_PATH%"
-echo       "chrome-extension://你的扩展ID/" >> "%CHROME_MANIFEST_PATH%"
+echo       "chrome-extension://your plugin ID/" >> "%CHROME_MANIFEST_PATH%"
 echo   ] >> "%CHROME_MANIFEST_PATH%"
 echo } >> "%CHROME_MANIFEST_PATH%"
 
