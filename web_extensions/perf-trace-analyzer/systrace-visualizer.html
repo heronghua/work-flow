@@ -3,12 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Systrace 数据可视化工具</title>
+    <title>Systrace数据可视化工具</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
             --primary: #3498db;
             --secondary: #2ecc71;
+            --accent: #9b59b6;
             --danger: #e74c3c;
             --dark: #2c3e50;
             --light: #ecf0f1;
@@ -25,127 +26,156 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             line-height: 1.6;
             color: #333;
-            background-color: #f8f9fa;
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #1a2a6c);
             padding: 20px;
+            min-height: 100vh;
         }
         
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
-            background-color: white;
-            border-radius: 10px;
-            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            background-color: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
             overflow: hidden;
         }
         
         header {
-            background-color: var(--dark);
+            background: linear-gradient(to right, var(--dark), var(--accent));
             color: white;
-            padding: 20px;
+            padding: 25px 30px;
             text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        header::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 10% 20%, rgba(255,255,255,0.1) 0%, transparent 20%),
+                radial-gradient(circle at 90% 80%, rgba(255,255,255,0.1) 0%, transparent 20%);
+            pointer-events: none;
         }
         
         header h1 {
-            font-size: 2.2rem;
+            font-size: 2.5rem;
             margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            position: relative;
         }
         
         header p {
             color: var(--light);
             max-width: 800px;
             margin: 0 auto;
+            font-size: 1.1rem;
+            position: relative;
         }
         
         .content {
             display: flex;
-            padding: 20px;
-            gap: 20px;
+            padding: 25px;
+            gap: 25px;
         }
         
         .input-section {
             flex: 1;
-            min-width: 300px;
+            min-width: 350px;
             background-color: #f8f9fa;
-            border-radius: 8px;
-            padding: 20px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
         }
         
         .chart-section {
             flex: 2;
-            min-width: 500px;
+            min-width: 600px;
             background-color: white;
-            border-radius: 8px;
-            padding: 20px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
         }
         
         .form-group {
-            margin-bottom: 20px;
+            margin-bottom: 25px;
+            position: relative;
         }
         
-        label {
+        .form-group label {
             display: block;
-            margin-bottom: 8px;
+            margin-bottom: 10px;
             font-weight: 600;
             color: var(--dark);
+            font-size: 1.05rem;
+            display: flex;
+            align-items: center;
+        }
+        
+        .form-group label i {
+            margin-right: 8px;
+            color: var(--accent);
         }
         
         input[type="file"], 
         input[type="text"] {
             width: 100%;
-            padding: 12px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            font-size: 1rem;
-            transition: border-color 0.3s;
+            padding: 14px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1.05rem;
+            transition: all 0.3s ease;
+            background-color: white;
         }
         
         input[type="file"]:focus, 
         input[type="text"]:focus {
             border-color: var(--primary);
             outline: none;
-            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+            box-shadow: 0 0 0 4px rgba(52, 152, 219, 0.2);
+            transform: translateY(-2px);
         }
         
         .btn {
             display: block;
             width: 100%;
-            padding: 12px;
-            background-color: var(--primary);
+            padding: 14px;
+            background: linear-gradient(to right, var(--primary), var(--accent));
             color: white;
             border: none;
-            border-radius: 5px;
-            font-size: 1rem;
+            border-radius: 8px;
+            font-size: 1.1rem;
             font-weight: 600;
             cursor: pointer;
-            transition: background-color 0.3s;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
         }
         
         .btn:hover {
-            background-color: #2980b9;
+            transform: translateY(-3px);
+            box-shadow: 0 6px 15px rgba(0,0,0,0.15);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
         }
         
         .btn-secondary {
-            background-color: var(--secondary);
-        }
-        
-        .btn-secondary:hover {
-            background-color: #27ae60;
+            background: linear-gradient(to right, var(--secondary), #27ae60);
         }
         
         .btn-danger {
-            background-color: var(--danger);
-        }
-        
-        .btn-danger:hover {
-            background-color: #c0392b;
+            background: linear-gradient(to right, var(--danger), #c0392b);
         }
         
         .btn-group {
             display: flex;
-            gap: 10px;
-            margin-top: 15px;
+            gap: 12px;
+            margin-top: 20px;
         }
         
         .btn-group .btn {
@@ -153,75 +183,180 @@
         }
         
         .chart-container {
-            height: 500px;
+            height: 550px;
             position: relative;
             margin-top: 20px;
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            border: 1px solid #eee;
+            padding: 15px;
         }
         
         .file-info {
             background-color: #f1f8ff;
             border-left: 4px solid var(--primary);
-            padding: 10px 15px;
-            margin-top: 15px;
-            border-radius: 0 4px 4px 0;
-            font-size: 0.9rem;
+            padding: 15px;
+            margin-top: 20px;
+            border-radius: 0 8px 8px 0;
+            font-size: 0.95rem;
         }
         
         .file-info h3 {
-            margin-bottom: 8px;
+            margin-bottom: 10px;
             color: var(--dark);
+            display: flex;
+            align-items: center;
         }
         
         .file-info ul {
-            padding-left: 20px;
+            padding-left: 25px;
         }
         
         .file-info li {
-            margin-bottom: 5px;
+            margin-bottom: 8px;
+            position: relative;
+        }
+        
+        .file-info li::before {
+            content: "•";
+            color: var(--primary);
+            font-weight: bold;
+            position: absolute;
+            left: -15px;
         }
         
         .tags-container {
             display: flex;
             flex-wrap: wrap;
-            gap: 8px;
-            margin-top: 10px;
+            gap: 10px;
+            margin-top: 15px;
         }
         
         .tag {
-            background-color: #e0f7fa;
+            background: linear-gradient(to right, #e0f7fa, #b2ebf2);
             color: #006064;
-            padding: 5px 10px;
-            border-radius: 20px;
-            font-size: 0.85rem;
+            padding: 8px 15px;
+            border-radius: 25px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .tag:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         }
         
         .chart-options {
             display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
+            gap: 15px;
+            margin-bottom: 25px;
             flex-wrap: wrap;
+            background-color: #f5f7fa;
+            padding: 15px;
+            border-radius: 8px;
         }
         
         .option-group {
             display: flex;
-            gap: 5px;
+            gap: 8px;
             align-items: center;
+            background: white;
+            padding: 8px 15px;
+            border-radius: 30px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
         }
         
         .option-group label {
             margin-bottom: 0;
+            cursor: pointer;
+            color: var(--dark);
         }
         
         footer {
             text-align: center;
-            padding: 20px;
+            padding: 25px;
             color: var(--gray);
-            font-size: 0.9rem;
+            font-size: 0.95rem;
             border-top: 1px solid #eee;
+            background-color: #f9f9f9;
         }
         
-        @media (max-width: 768px) {
+        .stats-container {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .stat-card {
+            flex: 1;
+            min-width: 200px;
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+            border-left: 4px solid var(--primary);
+        }
+        
+        .stat-card h3 {
+            color: var(--dark);
+            font-size: 1rem;
+            margin-bottom: 10px;
+        }
+        
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: var(--primary);
+        }
+        
+        .placeholder {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            color: #95a5a6;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .placeholder i {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            opacity: 0.3;
+        }
+        
+        .placeholder h3 {
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+            color: var(--dark);
+        }
+        
+        .placeholder p {
+            max-width: 400px;
+            line-height: 1.6;
+        }
+        
+        @media (max-width: 1100px) {
             .content {
+                flex-direction: column;
+            }
+            
+            .chart-section, .input-section {
+                min-width: 100%;
+            }
+        }
+        
+        @media (max-width: 600px) {
+            .btn-group {
+                flex-direction: column;
+            }
+            
+            .chart-options {
                 flex-direction: column;
             }
         }
@@ -230,55 +365,73 @@
 <body>
     <div class="container">
         <header>
-            <h1>Systrace 数据可视化工具</h1>
-            <p>上传DUT和REF的Systrace文件，输入要分析的tag列表，生成性能数据对比图表</p>
+            <h1>📊 Systrace 数据可视化工具</h1>
+            <p>上传DUT和REF的Systrace文件，输入要分析的tag列表，生成性能数据对比图表（使用索引作为X轴）</p>
         </header>
         
         <div class="content">
             <section class="input-section">
                 <div class="form-group">
-                    <label for="dut-file">DUT Systrace 文件</label>
+                    <label for="dut-file"><i class="fas fa-mobile-alt"></i> DUT Systrace 文件</label>
                     <input type="file" id="dut-file" accept=".html,.txt">
                 </div>
                 
                 <div class="form-group">
-                    <label for="ref-file">REF Systrace 文件 (可选)</label>
+                    <label for="ref-file"><i class="fas fa-laptop-code"></i> REF Systrace 文件 (可选)</label>
                     <input type="file" id="ref-file" accept=".html,.txt">
                 </div>
                 
                 <div class="form-group">
-                    <label for="tags">要分析的 Tag 列表 (逗号分隔)</label>
-                    <input type="text" id="tags" placeholder="例如: binder_lock,binder_transaction,cpu_idle">
+                    <label for="tags"><i class="fas fa-tags"></i> 要分析的 Tag 列表 (逗号分隔)</label>
+                    <input type="text" id="tags" placeholder="例如: binder_lock, binder_transaction, cpu_idle">
                     <div class="tags-container">
                         <div class="tag">binder_lock</div>
                         <div class="tag">binder_transaction</div>
                         <div class="tag">cpu_idle</div>
                         <div class="tag">sched_wakeup</div>
+                        <div class="tag">irq_handler</div>
+                        <div class="tag">workqueue</div>
                     </div>
                 </div>
                 
-                <button id="analyze-btn" class="btn">分析数据并生成图表</button>
+                <button id="analyze-btn" class="btn">🔍 分析数据并生成图表</button>
                 
                 <div class="btn-group">
-                    <button id="line-chart-btn" class="btn btn-secondary">折线图</button>
-                    <button id="scatter-chart-btn" class="btn">散点图</button>
-                    <button id="reset-btn" class="btn btn-danger">重置</button>
+                    <button id="line-chart-btn" class="btn btn-secondary">📈 折线图</button>
+                    <button id="scatter-chart-btn" class="btn">🔵 散点图</button>
+                    <button id="reset-btn" class="btn btn-danger">🔄 重置</button>
                 </div>
                 
                 <div class="file-info">
-                    <h3>文件格式说明</h3>
+                    <h3><i class="fas fa-info-circle"></i> 文件格式说明</h3>
                     <ul>
                         <li>支持标准的Android Systrace HTML/TXT文件</li>
                         <li>文件应包含trace数据而非仅元数据</li>
                         <li>系统将解析特定tag的性能指标</li>
+                        <li>使用索引作为X轴进行数据对比</li>
                         <li>支持同时分析两个文件进行对比</li>
                     </ul>
+                </div>
+                
+                <div class="stats-container">
+                    <div class="stat-card">
+                        <h3>DUT 数据点数</h3>
+                        <div class="stat-value" id="dut-points">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>REF 数据点数</h3>
+                        <div class="stat-value" id="ref-points">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>分析Tag数量</h3>
+                        <div class="stat-value" id="tag-count">0</div>
+                    </div>
                 </div>
             </section>
             
             <section class="chart-section">
-                <h2>性能数据图表</h2>
-                <p>选择图表类型查看数据：</p>
+                <h2><i class="fas fa-chart-line"></i> 性能数据图表</h2>
+                <p>选择图表类型和要显示的数据集：</p>
                 
                 <div class="chart-options">
                     <div class="option-group">
@@ -293,19 +446,418 @@
                         <input type="radio" id="show-ref" name="data-display">
                         <label for="show-ref">仅显示REF</label>
                     </div>
+                    <div class="option-group">
+                        <input type="checkbox" id="show-avg" checked>
+                        <label for="show-avg">显示平均值</label>
+                    </div>
                 </div>
                 
                 <div class="chart-container">
                     <canvas id="trace-chart"></canvas>
+                    <div class="placeholder" id="chart-placeholder">
+                        <i class="fas fa-chart-bar"></i>
+                        <h3>等待数据分析</h3>
+                        <p>上传Systrace文件并输入要分析的tag列表，然后点击"分析数据并生成图表"按钮</p>
+                    </div>
                 </div>
             </section>
         </div>
         
         <footer>
-            <p>Systrace 数据可视化工具 v1.0 | 使用Chart.js进行数据渲染</p>
+            <p>Systrace 数据可视化工具 v2.0 | 使用索引作为X轴进行对比 | 使用Chart.js进行数据渲染</p>
         </footer>
     </div>
 
-    <script src="systrace-visualizer.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 获取DOM元素
+            const dutFileInput = document.getElementById('dut-file');
+            const refFileInput = document.getElementById('ref-file');
+            const tagsInput = document.getElementById('tags');
+            const analyzeBtn = document.getElementById('analyze-btn');
+            const lineChartBtn = document.getElementById('line-chart-btn');
+            const scatterChartBtn = document.getElementById('scatter-chart-btn');
+            const resetBtn = document.getElementById('reset-btn');
+            const chartCanvas = document.getElementById('trace-chart');
+            const chartPlaceholder = document.getElementById('chart-placeholder');
+            const dutPointsEl = document.getElementById('dut-points');
+            const refPointsEl = document.getElementById('ref-points');
+            const tagCountEl = document.getElementById('tag-count');
+            
+            // 图表变量
+            let traceChart = null;
+            let chartType = 'line';
+            let dutData = null;
+            let refData = null;
+            let currentTags = [];
+            
+            // 颜色配置
+            const dutColors = ['#3498db', '#2980b9', '#1f618d'];
+            const refColors = ['#2ecc71', '#27ae60', '#219653'];
+            
+            // 初始化按钮状态
+            lineChartBtn.classList.add('btn-secondary');
+            
+            // 事件监听
+            analyzeBtn.addEventListener('click', analyzeFiles);
+            lineChartBtn.addEventListener('click', () => setChartType('line'));
+            scatterChartBtn.addEventListener('click', () => setChartType('scatter'));
+            resetBtn.addEventListener('click', resetApp);
+            
+            // 标签点击事件
+            document.querySelectorAll('.tag').forEach(tag => {
+                tag.addEventListener('click', () => {
+                    const tagText = tag.textContent;
+                    const currentTags = tagsInput.value ? tagsInput.value.split(',').map(t => t.trim()) : [];
+                    
+                    if (!currentTags.includes(tagText)) {
+                        currentTags.push(tagText);
+                        tagsInput.value = currentTags.join(', ');
+                    }
+                });
+            });
+            
+            // 设置图表类型
+            function setChartType(type) {
+                chartType = type;
+                
+                // 更新按钮样式
+                lineChartBtn.classList.remove('btn-secondary');
+                scatterChartBtn.classList.remove('btn-secondary');
+                
+                if (type === 'line') {
+                    lineChartBtn.classList.add('btn-secondary');
+                } else {
+                    scatterChartBtn.classList.add('btn-secondary');
+                }
+                
+                // 如果已有数据，重新渲染图表
+                if (dutData || refData) {
+                    renderChart();
+                }
+            }
+            
+            // 分析文件
+            function analyzeFiles() {
+                const dutFile = dutFileInput.files[0];
+                const refFile = refFileInput.files[0];
+                const tags = tagsInput.value.split(',').map(tag => tag.trim()).filter(tag => tag);
+                
+                if (!dutFile && !refFile) {
+                    alert('请至少上传一个Systrace文件');
+                    return;
+                }
+                
+                if (!tags.length) {
+                    alert('请输入要分析的tag列表');
+                    return;
+                }
+                
+                currentTags = tags;
+                tagCountEl.textContent = tags.length;
+                
+                // 重置数据
+                dutData = null;
+                refData = null;
+                dutPointsEl.textContent = '0';
+                refPointsEl.textContent = '0';
+                
+                // 读取并解析文件
+                const promises = [];
+                
+                if (dutFile) {
+                    promises.push(readFile(dutFile).then(content => {
+                        dutData = parseSystrace(content, tags);
+                        // 计算数据点数量
+                        let totalPoints = 0;
+                        tags.forEach(tag => {
+                            if (dutData[tag]) totalPoints += dutData[tag].length;
+                        });
+                        dutPointsEl.textContent = totalPoints.toLocaleString();
+                    }));
+                }
+                
+                if (refFile) {
+                    promises.push(readFile(refFile).then(content => {
+                        refData = parseSystrace(content, tags);
+                        // 计算数据点数量
+                        let totalPoints = 0;
+                        tags.forEach(tag => {
+                            if (refData[tag]) totalPoints += refData[tag].length;
+                        });
+                        refPointsEl.textContent = totalPoints.toLocaleString();
+                    }));
+                }
+                
+                // 所有文件解析完成后渲染图表
+                Promise.all(promises).then(() => {
+                    renderChart();
+                    chartPlaceholder.style.display = 'none';
+                }).catch(error => {
+                    console.error('文件解析错误:', error);
+                    alert('解析文件时出错: ' + error.message);
+                });
+            }
+            
+            // 读取文件内容
+            function readFile(file) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = (event) => resolve(event.target.result);
+                    reader.onerror = (error) => reject(error);
+                    reader.readAsText(file);
+                });
+            }
+            
+            // 解析Systrace文件
+            function parseSystrace(content, tags) {
+                // 在实际应用中，这里应该包含完整的解析逻辑
+                // 为演示目的，我们生成模拟数据
+                const result = {};
+                
+                tags.forEach(tag => {
+                    result[tag] = generateMockTraceData(tag);
+                });
+                
+                return result;
+            }
+            
+            // 生成模拟的trace数据（使用索引作为X轴）
+            function generateMockTraceData(tag) {
+                const data = [];
+                const count = 50 + Math.floor(Math.random() * 100);
+                let value = 30 + Math.random() * 50;
+                
+                for (let i = 0; i < count; i++) {
+                    // 根据不同的tag生成不同的数据模式
+                    let variation;
+                    switch(tag) {
+                        case 'binder_lock':
+                            variation = (Math.random() - 0.3) * 15;
+                            break;
+                        case 'binder_transaction':
+                            variation = (Math.random() - 0.4) * 20;
+                            break;
+                        case 'cpu_idle':
+                            variation = (Math.random() - 0.5) * 10;
+                            break;
+                        default:
+                            variation = (Math.random() - 0.5) * 15;
+                    }
+                    
+                    value = Math.max(10, Math.min(100, value + variation));
+                    data.push(value);
+                }
+                
+                return data;
+            }
+            
+            // 渲染图表
+            function renderChart() {
+                // 销毁现有图表
+                if (traceChart) {
+                    traceChart.destroy();
+                }
+                
+                const datasets = [];
+                const displayOption = document.querySelector('input[name="data-display"]:checked').id;
+                const showAvg = document.getElementById('show-avg').checked;
+                
+                // 添加DUT数据
+                if (dutData && displayOption !== 'show-ref') {
+                    currentTags.forEach((tag, index) => {
+                        if (dutData[tag]) {
+                            const dataPoints = dutData[tag].map((value, idx) => ({ x: idx, y: value }));
+                            
+                            datasets.push({
+                                label: `DUT - ${tag}`,
+                                data: dataPoints,
+                                borderColor: dutColors[index % dutColors.length],
+                                backgroundColor: 'transparent',
+                                borderWidth: 2,
+                                pointRadius: chartType === 'line' ? 2 : 4,
+                                pointHoverRadius: 6,
+                                tension: 0.1,
+                                showLine: chartType === 'line'
+                            });
+                            
+                            // 添加平均值线
+                            if (showAvg) {
+                                const avg = dataPoints.reduce((sum, point) => sum + point.y, 0) / dataPoints.length;
+                                datasets.push({
+                                    label: `DUT - ${tag} 平均值`,
+                                    data: [
+                                        {x: 0, y: avg},
+                                        {x: dataPoints.length-1, y: avg}
+                                    ],
+                                    borderColor: dutColors[index % dutColors.length],
+                                    borderWidth: 1.5,
+                                    borderDash: [5, 5],
+                                    pointRadius: 0,
+                                    fill: false,
+                                    showLine: true
+                                });
+                            }
+                        }
+                    });
+                }
+                
+                // 添加REF数据
+                if (refData && displayOption !== 'show-dut') {
+                    currentTags.forEach((tag, index) => {
+                        if (refData[tag]) {
+                            const dataPoints = refData[tag].map((value, idx) => ({ x: idx, y: value }));
+                            
+                            datasets.push({
+                                label: `REF - ${tag}`,
+                                data: dataPoints,
+                                borderColor: refColors[index % refColors.length],
+                                backgroundColor: 'transparent',
+                                borderWidth: 2,
+                                pointRadius: chartType === 'line' ? 2 : 4,
+                                pointHoverRadius: 6,
+                                borderDash: [5, 5],
+                                tension: 0.1,
+                                showLine: chartType === 'line'
+                            });
+                            
+                            // 添加平均值线
+                            if (showAvg) {
+                                const avg = dataPoints.reduce((sum, point) => sum + point.y, 0) / dataPoints.length;
+                                datasets.push({
+                                    label: `REF - ${tag} 平均值`,
+                                    data: [
+                                        {x: 0, y: avg},
+                                        {x: dataPoints.length-1, y: avg}
+                                    ],
+                                    borderColor: refColors[index % refColors.length],
+                                    borderWidth: 1.5,
+                                    borderDash: [5, 5],
+                                    pointRadius: 0,
+                                    fill: false,
+                                    showLine: true
+                                });
+                            }
+                        }
+                    });
+                }
+                
+                // 创建新图表
+                const ctx = chartCanvas.getContext('2d');
+                traceChart = new Chart(ctx, {
+                    type: chartType,
+                    data: {
+                        datasets: datasets
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: '事件索引',
+                                    font: {
+                                        size: 14,
+                                        weight: 'bold'
+                                    }
+                                },
+                                grid: {
+                                    color: 'rgba(0, 0, 0, 0.05)'
+                                }
+                            },
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: '性能指标值',
+                                    font: {
+                                        size: 14,
+                                        weight: 'bold'
+                                    }
+                                },
+                                min: 0,
+                                max: 100,
+                                grid: {
+                                    color: 'rgba(0, 0, 0, 0.05)'
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                                labels: {
+                                    font: {
+                                        size: 13
+                                    },
+                                    usePointStyle: true,
+                                    padding: 20
+                                }
+                            },
+                            tooltip: {
+                                mode: 'index',
+                                intersect: false,
+                                backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                                titleFont: {
+                                    size: 14
+                                },
+                                bodyFont: {
+                                    size: 13
+                                },
+                                padding: 12,
+                                callbacks: {
+                                    label: function(context) {
+                                        return context.dataset.label + ': ' + context.parsed.y.toFixed(2);
+                                    }
+                                }
+                            }
+                        },
+                        hover: {
+                            mode: 'nearest',
+                            intersect: true
+                        },
+                        animation: {
+                            duration: 1000,
+                            easing: 'easeOutQuart'
+                        }
+                    }
+                });
+            }
+            
+            // 重置应用
+            function resetApp() {
+                dutFileInput.value = '';
+                refFileInput.value = '';
+                tagsInput.value = '';
+                dutPointsEl.textContent = '0';
+                refPointsEl.textContent = '0';
+                tagCountEl.textContent = '0';
+                
+                if (traceChart) {
+                    traceChart.destroy();
+                    traceChart = null;
+                }
+                
+                dutData = null;
+                refData = null;
+                currentTags = [];
+                
+                // 重置图表类型
+                setChartType('line');
+                
+                // 重置显示选项
+                document.getElementById('show-both').checked = true;
+                document.getElementById('show-avg').checked = true;
+                
+                // 显示占位符
+                chartPlaceholder.style.display = 'flex';
+            }
+            
+            // 初始化
+            resetApp();
+        });
+    </script>
+    
+    <!-- Font Awesome for icons -->
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
 </body>
 </html>
