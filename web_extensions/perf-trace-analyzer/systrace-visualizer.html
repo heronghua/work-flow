@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Systrace数据可视化工具</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
     <style>
         :root {
             --primary: #3498db;
@@ -450,6 +451,10 @@
                         <input type="checkbox" id="show-avg" checked>
                         <label for="show-avg">显示平均值</label>
                     </div>
+                    <div class="option-group">
+                        <input type="checkbox" id="show-index" checked>
+                        <label for="show-index">显示索引</label>
+                    </div>
                 </div>
                 
                 <div class="chart-container">
@@ -464,7 +469,7 @@
         </div>
         
         <footer>
-            <p>Systrace 数据可视化工具 v2.0 | 使用索引作为X轴进行对比 | 使用Chart.js进行数据渲染</p>
+            <p>Systrace 数据可视化工具 v2.1 | 使用索引作为X轴进行对比 | 使用Chart.js进行数据渲染</p>
         </footer>
     </div>
 
@@ -492,8 +497,8 @@
             let currentTags = [];
             
             // 颜色配置
-            const dutColors = ['#3498db', '#2980b9', '#1f618d'];
-            const refColors = ['#2ecc71', '#27ae60', '#219653'];
+            const dutColors = ['#3498db', '#2980b9', '#1f618d', '#154360'];
+            const refColors = ['#2ecc71', '#27ae60', '#219653', '#186A3B'];
             
             // 初始化按钮状态
             lineChartBtn.classList.add('btn-secondary');
@@ -641,6 +646,15 @@
                         case 'cpu_idle':
                             variation = (Math.random() - 0.5) * 10;
                             break;
+                        case 'sched_wakeup':
+                            variation = (Math.random() - 0.2) * 18;
+                            break;
+                        case 'irq_handler':
+                            variation = (Math.random() - 0.6) * 25;
+                            break;
+                        case 'workqueue':
+                            variation = (Math.random() - 0.5) * 12;
+                            break;
                         default:
                             variation = (Math.random() - 0.5) * 15;
                     }
@@ -662,12 +676,14 @@
                 const datasets = [];
                 const displayOption = document.querySelector('input[name="data-display"]:checked').id;
                 const showAvg = document.getElementById('show-avg').checked;
+                const showIndex = document.getElementById('show-index').checked;
                 
                 // 添加DUT数据
                 if (dutData && displayOption !== 'show-ref') {
                     currentTags.forEach((tag, index) => {
                         if (dutData[tag]) {
-                            const dataPoints = dutData[tag].map((value, idx) => ({ x: idx, y: value }));
+                            // 修复索引问题：从1开始而不是0
+                            const dataPoints = dutData[tag].map((value, idx) => ({ x: idx + 1, y: value }));
                             
                             datasets.push({
                                 label: `DUT - ${tag}`,
@@ -687,8 +703,8 @@
                                 datasets.push({
                                     label: `DUT - ${tag} 平均值`,
                                     data: [
-                                        {x: 0, y: avg},
-                                        {x: dataPoints.length-1, y: avg}
+                                        {x: 1, y: avg},
+                                        {x: dataPoints.length, y: avg}
                                     ],
                                     borderColor: dutColors[index % dutColors.length],
                                     borderWidth: 1.5,
@@ -706,7 +722,8 @@
                 if (refData && displayOption !== 'show-dut') {
                     currentTags.forEach((tag, index) => {
                         if (refData[tag]) {
-                            const dataPoints = refData[tag].map((value, idx) => ({ x: idx, y: value }));
+                            // 修复索引问题：从1开始而不是0
+                            const dataPoints = refData[tag].map((value, idx) => ({ x: idx + 1, y: value }));
                             
                             datasets.push({
                                 label: `REF - ${tag}`,
@@ -727,8 +744,8 @@
                                 datasets.push({
                                     label: `REF - ${tag} 平均值`,
                                     data: [
-                                        {x: 0, y: avg},
-                                        {x: dataPoints.length-1, y: avg}
+                                        {x: 1, y: avg},
+                                        {x: dataPoints.length, y: avg}
                                     ],
                                     borderColor: refColors[index % refColors.length],
                                     borderWidth: 1.5,
@@ -764,6 +781,16 @@
                                 },
                                 grid: {
                                     color: 'rgba(0, 0, 0, 0.05)'
+                                },
+                                min: 1, // 确保X轴从1开始
+                                ticks: {
+                                    callback: function(value) {
+                                        if (showIndex) {
+                                            return value;
+                                        } else {
+                                            return null;
+                                        }
+                                    }
                                 }
                             },
                             y: {
@@ -805,6 +832,9 @@
                                 },
                                 padding: 12,
                                 callbacks: {
+                                    title: function(tooltipItems) {
+                                        return `事件 #${tooltipItems[0].parsed.x}`;
+                                    },
                                     label: function(context) {
                                         return context.dataset.label + ': ' + context.parsed.y.toFixed(2);
                                     }
@@ -847,6 +877,7 @@
                 // 重置显示选项
                 document.getElementById('show-both').checked = true;
                 document.getElementById('show-avg').checked = true;
+                document.getElementById('show-index').checked = true;
                 
                 // 显示占位符
                 chartPlaceholder.style.display = 'flex';
@@ -856,8 +887,5 @@
             resetApp();
         });
     </script>
-    
-    <!-- Font Awesome for icons -->
-    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
 </body>
 </html>
