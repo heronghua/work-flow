@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Systrace 数据可视化工具</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #3498db;
+            --secondary: #2ecc71;
+            --danger: #e74c3c;
+            --dark: #2c3e50;
+            --light: #ecf0f1;
+            --gray: #95a5a6;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f8f9fa;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        
+        header {
+            background-color: var(--dark);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        header h1 {
+            font-size: 2.2rem;
+            margin-bottom: 10px;
+        }
+        
+        header p {
+            color: var(--light);
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .content {
+            display: flex;
+            padding: 20px;
+            gap: 20px;
+        }
+        
+        .input-section {
+            flex: 1;
+            min-width: 300px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+        
+        .chart-section {
+            flex: 2;
+            min-width: 500px;
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--dark);
+        }
+        
+        input[type="file"], 
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+        
+        input[type="file"]:focus, 
+        input[type="text"]:focus {
+            border-color: var(--primary);
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+        }
+        
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .btn:hover {
+            background-color: #2980b9;
+        }
+        
+        .btn-secondary {
+            background-color: var(--secondary);
+        }
+        
+        .btn-secondary:hover {
+            background-color: #27ae60;
+        }
+        
+        .btn-danger {
+            background-color: var(--danger);
+        }
+        
+        .btn-danger:hover {
+            background-color: #c0392b;
+        }
+        
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .btn-group .btn {
+            flex: 1;
+        }
+        
+        .chart-container {
+            height: 500px;
+            position: relative;
+            margin-top: 20px;
+        }
+        
+        .file-info {
+            background-color: #f1f8ff;
+            border-left: 4px solid var(--primary);
+            padding: 10px 15px;
+            margin-top: 15px;
+            border-radius: 0 4px 4px 0;
+            font-size: 0.9rem;
+        }
+        
+        .file-info h3 {
+            margin-bottom: 8px;
+            color: var(--dark);
+        }
+        
+        .file-info ul {
+            padding-left: 20px;
+        }
+        
+        .file-info li {
+            margin-bottom: 5px;
+        }
+        
+        .tags-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        
+        .tag {
+            background-color: #e0f7fa;
+            color: #006064;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+        }
+        
+        .chart-options {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .option-group {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+        }
+        
+        .option-group label {
+            margin-bottom: 0;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 20px;
+            color: var(--gray);
+            font-size: 0.9rem;
+            border-top: 1px solid #eee;
+        }
+        
+        @media (max-width: 768px) {
+            .content {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Systrace 数据可视化工具</h1>
+            <p>上传DUT和REF的Systrace文件，输入要分析的tag列表，生成性能数据对比图表</p>
+        </header>
+        
+        <div class="content">
+            <section class="input-section">
+                <div class="form-group">
+                    <label for="dut-file">DUT Systrace 文件</label>
+                    <input type="file" id="dut-file" accept=".html,.txt">
+                </div>
+                
+                <div class="form-group">
+                    <label for="ref-file">REF Systrace 文件 (可选)</label>
+                    <input type="file" id="ref-file" accept=".html,.txt">
+                </div>
+                
+                <div class="form-group">
+                    <label for="tags">要分析的 Tag 列表 (逗号分隔)</label>
+                    <input type="text" id="tags" placeholder="例如: binder_lock,binder_transaction,cpu_idle">
+                    <div class="tags-container">
+                        <div class="tag">binder_lock</div>
+                        <div class="tag">binder_transaction</div>
+                        <div class="tag">cpu_idle</div>
+                        <div class="tag">sched_wakeup</div>
+                    </div>
+                </div>
+                
+                <button id="analyze-btn" class="btn">分析数据并生成图表</button>
+                
+                <div class="btn-group">
+                    <button id="line-chart-btn" class="btn btn-secondary">折线图</button>
+                    <button id="scatter-chart-btn" class="btn">散点图</button>
+                    <button id="reset-btn" class="btn btn-danger">重置</button>
+                </div>
+                
+                <div class="file-info">
+                    <h3>文件格式说明</h3>
+                    <ul>
+                        <li>支持标准的Android Systrace HTML/TXT文件</li>
+                        <li>文件应包含trace数据而非仅元数据</li>
+                        <li>系统将解析特定tag的性能指标</li>
+                        <li>支持同时分析两个文件进行对比</li>
+                    </ul>
+                </div>
+            </section>
+            
+            <section class="chart-section">
+                <h2>性能数据图表</h2>
+                <p>选择图表类型查看数据：</p>
+                
+                <div class="chart-options">
+                    <div class="option-group">
+                        <input type="radio" id="show-both" name="data-display" checked>
+                        <label for="show-both">显示DUT和REF</label>
+                    </div>
+                    <div class="option-group">
+                        <input type="radio" id="show-dut" name="data-display">
+                        <label for="show-dut">仅显示DUT</label>
+                    </div>
+                    <div class="option-group">
+                        <input type="radio" id="show-ref" name="data-display">
+                        <label for="show-ref">仅显示REF</label>
+                    </div>
+                </div>
+                
+                <div class="chart-container">
+                    <canvas id="trace-chart"></canvas>
+                </div>
+            </section>
+        </div>
+        
+        <footer>
+            <p>Systrace 数据可视化工具 v1.0 | 使用Chart.js进行数据渲染</p>
+        </footer>
+    </div>
+
+    <script src="systrace-visualizer.js"></script>
+</body>
+</html>
