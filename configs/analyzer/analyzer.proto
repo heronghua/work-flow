@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package analyzer;
+
+// 定义问题类型枚举
+enum IssueType {
+  ISSUE_ANR = 0;  // ANR 类型
+  ISSUE_JE = 1;   // Java 异常类型
+  ISSUE_OTHER = 2; // 其他问题类型
+}
+
+// 分析请求
+message AnalysisRequest {
+  IssueType issue_type = 1;  // 问题类型 (字段编号1)
+  string data = 2;           // 要分析的数据 (字段编号2)
+  int32 priority = 3;        // 请求优先级 (字段编号3)
+  repeated string options = 4; // 分析选项 (字段编号4)
+}
+
+// 分析结果
+message AnalysisResult {
+  enum Status {
+    STATUS_SUCCESS = 0;  // 成功
+    STATUS_ERROR = 1;    // 错误
+    STATUS_PENDING = 2;  // 处理中
+  }
+  
+  Status status = 1;               // 状态 (字段编号1)
+  string result_data = 2;          // 分析结果数据 (字段编号2)
+  double processing_time = 3;      // 处理时间(秒) (字段编号3)
+  string error_message = 4;        // 错误信息 (字段编号4)
+}
+
+// 服务定义
+service AnalyzerService {
+  rpc Analyze(AnalysisRequest) returns (AnalysisResult);
+}
