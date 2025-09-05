@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PNG文件查看器</title>
+    <title>PNG文件查看器 - 优化版</title>
     <style>
         * {
             margin: 0;
@@ -34,6 +34,7 @@
             flex-direction: column;
             box-shadow: 2px 0 10px rgba(0, 0, 0, 0.2);
             z-index: 10;
+            overflow-y: auto;
         }
         
         .main-content {
@@ -42,6 +43,7 @@
             flex-direction: column;
             position: relative;
             overflow: hidden;
+            background: #2c3e50;
         }
         
         h1 {
@@ -139,67 +141,91 @@
             margin: 5px 0;
         }
         
-        .image-container {
+        .image-grid-container {
             flex: 1;
+            overflow: auto;
+            padding: 20px;
+        }
+        
+        .image-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+            align-content: flex-start;
+            justify-items: center;
+            transform-origin: top left;
+            transition: transform 0.1s ease;
+            width: 100%;
+            min-height: 100%;
+        }
+        
+        .grid-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            padding: 10px;
+            background: rgba(52, 73, 94, 0.5);
+            border-radius: 0;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        
+        .grid-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+            background: rgba(52, 73, 94, 0.8);
+        }
+        
+        .grid-item.active {
+            border: 2px solid #1abc9c;
+            background: rgba(52, 73, 94, 0.9);
+            box-shadow: 0 0 15px rgba(26, 188, 156, 0.4);
+        }
+        
+        .item-container {
+            position: relative;
             display: flex;
             justify-content: center;
             align-items: center;
-            padding: 20px;
-            overflow: auto;
-            position: relative;
+            width: 100%;
+            height: 100%;
         }
         
-        #background-area {
+        .item-bg {
             position: absolute;
             top: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: -1;
-            transition: background 0.3s;
+            z-index: 1;
         }
         
-        .main-image {
+        .grid-image {
+            position: relative;
+            z-index: 2;
+            display: block;
+            border-radius: 0;
             max-width: 100%;
-            max-height: 80vh;
-            box-shadow: 0 5px 25px rgba(0, 0, 0, 0.3);
-            border: 5px solid rgba(255, 255, 255, 0.1);
-            border-radius: 4px;
+            max-height: 200px;
         }
         
-        .thumbnails {
-            height: 120px;
-            background: #34495e;
-            padding: 15px;
-            display: flex;
-            gap: 10px;
-            overflow-x: auto;
-            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.2);
-        }
-        
-        .thumbnail {
-            height: 90px;
-            width: 90px;
-            object-fit: cover;
-            border: 2px solid transparent;
-            border-radius: 4px;
-            cursor: pointer;
-            opacity: 0.7;
-            transition: all 0.2s;
-        }
-        
-        .thumbnail:hover {
-            opacity: 1;
-            transform: scale(1.05);
-        }
-        
-        .thumbnail.active {
-            opacity: 1;
-            border-color: #1abc9c;
-            box-shadow: 0 0 8px rgba(26, 188, 156, 0.6);
+        .item-filename {
+            margin-top: 10px;
+            font-size: 12px;
+            color: #ecf0f1;
+            text-align: center;
+            word-break: break-all;
+            max-height: 32px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            width: 100%;
         }
         
         .no-images {
+            grid-column: 1 / -1;
             text-align: center;
             color: #bdc3c7;
             font-size: 18px;
@@ -228,6 +254,238 @@
             margin-bottom: 8px;
         }
         
+        .grid-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px 0;
+            background: #2c3e50;
+        }
+        
+        .grid-title {
+            font-size: 1.2rem;
+            color: #ecf0f1;
+        }
+        
+        .image-count {
+            font-size: 0.9rem;
+            color: #bdc3c7;
+        }
+        
+        .control-buttons {
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .control-btn {
+            padding: 10px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+            text-align: center;
+        }
+        
+        .control-btn:hover {
+            background: #2980b9;
+        }
+        
+        .control-btn:disabled {
+            background: #7f8c8d;
+            cursor: not-allowed;
+        }
+        
+        .control-btn.active {
+            background: #2ecc71;
+        }
+        
+        .toggle-btn {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .toggle-btn:active {
+            transform: translateY(2px);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+        
+        .toggle-btn.locked {
+            background: #2ecc71;
+            box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+        
+        .fps-control {
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .fps-control label {
+            font-size: 12px;
+            color: #bdc3c7;
+        }
+        
+        .fps-control input {
+            flex: 1;
+            background: #2c3e50;
+            border: 1px solid #7f8c8d;
+            border-radius: 4px;
+            color: #ecf0f1;
+            padding: 5px;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #1abc9c;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        /* 模态框样式 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-content {
+            position: relative;
+            max-width: 90%;
+            max-height: 90%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .modal-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+        
+        .modal-image {
+            position: relative;
+            z-index: 2;
+            max-width: 100%;
+            max-height: 80vh;
+            box-shadow: 0 5px 25px rgba(0, 0, 0, 0.5);
+        }
+        
+        .modal-controls {
+            position: absolute;
+            bottom: -60px;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            padding: 10px;
+        }
+        
+        .modal-btn {
+            padding: 8px 15px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .modal-btn:hover {
+            background: #2980b9;
+        }
+        
+        .modal-close {
+            position: absolute;
+            top: -40px;
+            right: 0;
+            background: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-info {
+            position: absolute;
+            top: -40px;
+            left: 0;
+            color: white;
+            font-size: 14px;
+        }
+        
+        .modal-lock-btn {
+            position: absolute;
+            top: -40px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 5px 10px;
+            background: #9b59b6;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        
+        .modal-lock-btn:hover {
+            background: #8e44ad;
+        }
+        
+        .zoom-info {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 14px;
+            z-index: 20;
+            display: none;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+        
+        @media (max-width: 1024px) {
+            .image-grid {
+                grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            }
+        }
+        
         @media (max-width: 768px) {
             .container {
                 flex-direction: column;
@@ -238,13 +496,10 @@
                 height: auto;
             }
             
-            .thumbnails {
-                height: 100px;
-            }
-            
-            .thumbnail {
-                height: 70px;
-                width: 70px;
+            .image-grid {
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+                gap: 15px;
+                padding: 15px;
             }
         }
     </style>
@@ -269,149 +524,679 @@
                 </div>
             </div>
             
+            <div class="control-buttons">
+                <button class="control-btn toggle-btn" id="lock-size-btn" disabled>锁定当前尺寸</button>
+                
+                <div class="fps-control">
+                    <label for="fps-input">帧率 (fps):</label>
+                    <input type="number" id="fps-input" min="1" max="60" value="33">
+                </div>
+            </div>
+            
             <div class="file-info">
                 <h2>文件信息</h2>
                 <p id="file-count">已加载PNG文件: 0</p>
                 <p id="current-file">当前文件: 无</p>
                 <p id="file-size">文件大小: 无</p>
+                <p id="image-dimensions">图像尺寸: 无</p>
+                <p id="selected-index">选中索引: 无</p>
+                <p id="locked-size">锁定尺寸: 无</p>
+                <p id="filtered-count">过滤后数量: 0</p>
             </div>
             
             <div class="instructions">
                 <h2>使用说明</h2>
                 <ul>
                     <li>点击"选择文件夹"按钮选择包含PNG图像的文件夹</li>
-                    <li>从下方缩略图中选择要查看的图像</li>
+                    <li>点击网格中的图像查看文件信息</li>
+                    <li>双击图像可以在弹框中查看大图</li>
                     <li>使用背景选项测试PNG图像的透明度效果</li>
+                    <li>点击"锁定当前尺寸"只显示与当前图片相同尺寸的图片</li>
+                    <li>在弹框中使用播放控制按钮可以自动播放图片</li>
+                    <li>可以调整帧率控制播放速度（默认33fps）</li>
+                    <li>使用Ctrl+滚轮可以缩放右侧图片网格</li>
                     <li>支持的浏览器: Chrome, Edge, Firefox等现代浏览器</li>
                 </ul>
             </div>
         </div>
         
         <div class="main-content">
-            <div id="background-area" class="checkerboard"></div>
-            
-            <div class="image-container">
-                <div class="no-images" id="no-images">
-                    请选择一个包含PNG图像的文件夹
-                </div>
-                <img class="main-image" id="main-image" style="display: none;">
+            <div class="grid-header">
+                <div class="grid-title">PNG图像</div>
+                <div class="image-count" id="image-count">共 0 个图像</div>
             </div>
             
-            <div class="thumbnails" id="thumbnails">
-                <!-- 缩略图将在这里动态生成 -->
+            <div class="image-grid-container" id="image-grid-container">
+                <div class="image-grid" id="image-grid">
+                    <div class="no-images" id="no-images">
+                        请选择一个包含PNG图像的文件夹
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
+    <!-- 模态框 -->
+    <div class="modal" id="image-modal">
+        <div class="modal-content">
+            <div class="modal-bg" id="modal-bg"></div>
+            <img class="modal-image" id="modal-image">
+            <button class="modal-close" id="modal-close">×</button>
+            <div class="modal-info" id="modal-info"></div>
+            <button class="modal-lock-btn" id="modal-lock-btn">锁定此尺寸</button>
+            <div class="modal-controls">
+                <button class="modal-btn" id="modal-prev">上一张</button>
+                <button class="modal-btn" id="modal-play">播放</button>
+                <button class="modal-btn" id="modal-pause" disabled>暂停</button>
+                <button class="modal-btn" id="modal-next">下一张</button>
+                <button class="modal-btn" id="modal-stop">停止</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="zoom-info" id="zoom-info">缩放: 100%</div>
+
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const folderInput = document.getElementById('folder-input');
-            const folderBtn = document.getElementById('folder-btn');
-            const bgOptions = document.querySelectorAll('.bg-option');
-            const backgroundArea = document.getElementById('background-area');
-            const thumbnailsContainer = document.getElementById('thumbnails');
-            const mainImage = document.getElementById('main-image');
-            const noImages = document.getElementById('no-images');
-            const fileCount = document.getElementById('file-count');
-            const currentFile = document.getElementById('current-file');
-            const fileSize = document.getElementById('file-size');
+        // PNG查看器应用
+        const PNGViewer = {
+            // 初始化应用
+            init() {
+                this.cacheElements();
+                this.bindEvents();
+                this.setBackground('checkerboard');
+            },
             
-            let pngFiles = [];
-            let currentIndex = 0;
+            // 缓存DOM元素
+            cacheElements() {
+                // 主界面元素
+                this.folderInput = document.getElementById('folder-input');
+                this.folderBtn = document.getElementById('folder-btn');
+                this.bgOptions = document.querySelectorAll('.bg-option');
+                this.imageGridContainer = document.getElementById('image-grid-container');
+                this.imageGrid = document.getElementById('image-grid');
+                this.noImages = document.getElementById('no-images');
+                this.fileCount = document.getElementById('file-count');
+                this.currentFile = document.getElementById('current-file');
+                this.fileSize = document.getElementById('file-size');
+                this.imageDimensions = document.getElementById('image-dimensions');
+                this.selectedIndex = document.getElementById('selected-index');
+                this.imageCount = document.getElementById('image-count');
+                this.lockedSize = document.getElementById('locked-size');
+                this.filteredCount = document.getElementById('filtered-count');
+                this.lockSizeBtn = document.getElementById('lock-size-btn');
+                this.fpsInput = document.getElementById('fps-input');
+                this.zoomInfo = document.getElementById('zoom-info');
+                
+                // 模态框元素
+                this.modal = document.getElementById('image-modal');
+                this.modalBg = document.getElementById('modal-bg');
+                this.modalImage = document.getElementById('modal-image');
+                this.modalClose = document.getElementById('modal-close');
+                this.modalInfo = document.getElementById('modal-info');
+                this.modalPrev = document.getElementById('modal-prev');
+                this.modalPlay = document.getElementById('modal-play');
+                this.modalPause = document.getElementById('modal-pause');
+                this.modalNext = document.getElementById('modal-next');
+                this.modalStop = document.getElementById('modal-stop');
+                this.modalLockBtn = document.getElementById('modal-lock-btn');
+            },
             
-            // 文件夹选择按钮点击事件
-            folderBtn.addEventListener('click', function() {
-                folderInput.click();
-            });
+            // 绑定事件
+            bindEvents() {
+                // 文件夹选择
+                this.folderBtn.addEventListener('click', () => this.folderInput.click());
+                this.folderInput.addEventListener('change', (e) => this.handleFolderSelect(e));
+                
+                // 背景选择
+                this.bgOptions.forEach(option => {
+                    option.addEventListener('click', () => {
+                        const bgType = option.getAttribute('data-bg');
+                        this.setBackground(bgType);
+                        this.bgOptions.forEach(opt => opt.classList.remove('active'));
+                        option.classList.add('active');
+                    });
+                });
+                
+                // 锁定尺寸按钮
+                this.lockSizeBtn.addEventListener('click', () => this.toggleSizeLock());
+                
+                // 模态框事件
+                this.modalClose.addEventListener('click', () => this.closeModal());
+                this.modalLockBtn.addEventListener('click', () => this.lockSizeFromModal());
+                this.modalPrev.addEventListener('click', () => this.navigateModal('prev'));
+                this.modalNext.addEventListener('click', () => this.navigateModal('next'));
+                this.modalPlay.addEventListener('click', () => this.startModalPlayback());
+                this.modalPause.addEventListener('click', () => this.stopModalPlayback());
+                this.modalStop.addEventListener('click', () => this.stopModal());
+                
+                // 缩放控制
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Control') this.isCtrlPressed = true;
+                });
+                
+                document.addEventListener('keyup', (e) => {
+                    if (e.key === 'Control') this.isCtrlPressed = false;
+                });
+                
+                this.imageGridContainer.addEventListener('wheel', (e) => this.handleZoom(e));
+            },
             
-            // 文件夹选择变化事件
-            folderInput.addEventListener('change', function(event) {
+            // 应用状态
+            state: {
+                pngFiles: [],
+                currentBackground: 'checkerboard',
+                selectedItem: null,
+                lockedSizeValue: null,
+                filteredFiles: [],
+                currentModalIndex: 0,
+                modalPlaybackInterval: null,
+                isModalPlaying: false,
+                currentModalSize: { width: 0, height: 0 },
+                scale: 1,
+                isCtrlPressed: false
+            },
+            
+            // 处理文件夹选择
+            handleFolderSelect(event) {
                 const files = Array.from(event.target.files);
-                pngFiles = files.filter(file => file.type === 'image/png');
+                this.state.pngFiles = files.filter(file => file.type === 'image/png');
                 
-                fileCount.textContent = `已加载PNG文件: ${pngFiles.length}`;
+                this.fileCount.textContent = `已加载PNG文件: ${this.state.pngFiles.length}`;
+                this.imageCount.textContent = `共 ${this.state.pngFiles.length} 个图像`;
                 
-                if (pngFiles.length === 0) {
-                    noImages.style.display = 'block';
-                    mainImage.style.display = 'none';
-                    thumbnailsContainer.innerHTML = '';
-                    currentFile.textContent = '当前文件: 无';
-                    fileSize.textContent = '文件大小: 无';
+                // 重置状态
+                this.resetState();
+                
+                if (this.state.pngFiles.length === 0) {
+                    this.showNoImagesMessage();
                     return;
                 }
                 
-                noImages.style.display = 'none';
-                thumbnailsContainer.innerHTML = '';
-                
-                // 生成缩略图
-                pngFiles.forEach((file, index) => {
-                    const thumbnail = document.createElement('img');
-                    thumbnail.classList.add('thumbnail');
-                    if (index === 0) thumbnail.classList.add('active');
-                    
-                    thumbnail.src = URL.createObjectURL(file);
-                    thumbnail.alt = file.name;
-                    
-                    thumbnail.addEventListener('click', function() {
-                        document.querySelectorAll('.thumbnail').forEach(thumb => {
-                            thumb.classList.remove('active');
-                        });
-                        thumbnail.classList.add('active');
-                        showImage(index);
-                    });
-                    
-                    thumbnailsContainer.appendChild(thumbnail);
-                });
-                
-                // 显示第一张图片
-                showImage(0);
-            });
+                this.renderImageGrid();
+            },
             
-            // 背景选择事件
-            bgOptions.forEach(option => {
-                option.addEventListener('click', function() {
-                    bgOptions.forEach(opt => opt.classList.remove('active'));
-                    option.classList.add('active');
-                    
-                    const bgType = option.getAttribute('data-bg');
-                    setBackground(bgType);
-                });
-            });
+            // 重置应用状态
+            resetState() {
+                this.state.lockedSizeValue = null;
+                this.lockedSize.textContent = '锁定尺寸: 无';
+                this.lockSizeBtn.disabled = this.state.pngFiles.length === 0;
+                this.lockSizeBtn.classList.remove('locked');
+                this.lockSizeBtn.textContent = '锁定当前尺寸';
+            },
             
-            // 设置背景函数
-            function setBackground(type) {
-                backgroundArea.className = '';
+            // 显示无图片消息
+            showNoImagesMessage() {
+                this.noImages.style.display = 'block';
+                this.imageGrid.innerHTML = '';
                 
-                switch(type) {
-                    case 'checkerboard':
-                        backgroundArea.classList.add('checkerboard');
-                        break;
-                    case 'red':
-                        backgroundArea.classList.add('red');
-                        break;
-                    case 'white':
-                        backgroundArea.classList.add('white');
-                        break;
-                    case 'black':
-                        backgroundArea.classList.add('black');
-                        break;
+                const noImgDiv = document.createElement('div');
+                noImgDiv.classList.add('no-images');
+                noImgDiv.textContent = '请选择一个包含PNG图像的文件夹';
+                this.imageGrid.appendChild(noImgDiv);
+                
+                this.currentFile.textContent = '当前文件: 无';
+                this.fileSize.textContent = '文件大小: 无';
+                this.imageDimensions.textContent = '图像尺寸: 无';
+                this.selectedIndex.textContent = '选中索引: 无';
+                this.filteredCount.textContent = '过滤后数量: 0';
+            },
+            
+            // 渲染图片网格
+            renderImageGrid() {
+                this.noImages.style.display = 'none';
+                this.imageGrid.innerHTML = '';
+                
+                // 显示加载状态
+                const loadingDiv = document.createElement('div');
+                loadingDiv.style.gridColumn = '1 / -1';
+                loadingDiv.style.textAlign = 'center';
+                loadingDiv.style.padding = '20px';
+                loadingDiv.innerHTML = '<div class="loading"></div><p style="margin-top: 10px;">加载图片中...</p>';
+                this.imageGrid.appendChild(loadingDiv);
+                
+                // 生成网格项
+                let loadedCount = 0;
+                
+                this.state.pngFiles.forEach((file, index) => {
+                    const img = new Image();
+                    img.src = URL.createObjectURL(file);
+                    
+                    img.onload = () => {
+                        loadedCount++;
+                        this.createGridItem(file, index, img.naturalWidth, img.naturalHeight);
+                        
+                        // 移除加载指示器（如果是最后一个图片）
+                        if (loadedCount === this.state.pngFiles.length) {
+                            this.finishImageLoading();
+                        }
+                    };
+                    
+                    img.onerror = () => {
+                        console.error('图片加载失败:', file.name);
+                        loadedCount++;
+                        
+                        // 如果所有图片都处理完毕，移除加载指示器
+                        if (loadedCount === this.state.pngFiles.length) {
+                            this.finishImageLoading();
+                        }
+                    };
+                });
+            },
+            
+            // 创建网格项
+            createGridItem(file, index, width, height) {
+                // 计算显示尺寸
+                const maxDisplaySize = 200;
+                let displayWidth = width;
+                let displayHeight = height;
+                
+                if (width > height) {
+                    if (width > maxDisplaySize) {
+                        displayWidth = maxDisplaySize;
+                        displayHeight = Math.round((height / width) * maxDisplaySize);
+                    }
+                } else {
+                    if (height > maxDisplaySize) {
+                        displayHeight = maxDisplaySize;
+                        displayWidth = Math.round((width / height) * maxDisplaySize);
+                    }
                 }
-            }
+                
+                // 创建网格项
+                const gridItem = document.createElement('div');
+                gridItem.classList.add('grid-item');
+                gridItem.dataset.index = index;
+                gridItem.dataset.width = width;
+                gridItem.dataset.height = height;
+                gridItem.dataset.filename = file.name;
+                
+                // 创建项目容器
+                const itemContainer = document.createElement('div');
+                itemContainer.classList.add('item-container');
+                itemContainer.style.width = displayWidth + 'px';
+                itemContainer.style.height = displayHeight + 'px';
+                
+                // 创建背景
+                const itemBg = document.createElement('div');
+                itemBg.classList.add('item-bg');
+                itemBg.classList.add(this.state.currentBackground);
+                itemBg.style.width = '100%';
+                itemBg.style.height = '100%';
+                
+                // 创建图片
+                const gridImage = document.createElement('img');
+                gridImage.classList.add('grid-image');
+                gridImage.src = URL.createObjectURL(file);
+                gridImage.alt = file.name;
+                gridImage.style.width = displayWidth + 'px';
+                gridImage.style.height = displayHeight + 'px';
+                
+                // 创建文件名
+                const fileName = document.createElement('div');
+                fileName.classList.add('item-filename');
+                fileName.textContent = file.name;
+                fileName.style.width = displayWidth + 'px';
+                
+                // 组装元素
+                itemContainer.appendChild(itemBg);
+                itemContainer.appendChild(gridImage);
+                gridItem.appendChild(itemContainer);
+                gridItem.appendChild(fileName);
+                
+                // 添加事件
+                gridItem.addEventListener('click', () => this.selectGridItem(gridItem, file, index, width, height));
+                gridItem.addEventListener('dblclick', () => this.openModal(index));
+                
+                // 添加到网格
+                this.imageGrid.appendChild(gridItem);
+            },
             
-            // 显示图片函数
-            function showImage(index) {
-                currentIndex = index;
-                const file = pngFiles[index];
+            // 完成图片加载
+            finishImageLoading() {
+                const loadingElement = this.imageGrid.querySelector('div[style*="grid-column: 1 / -1"]');
+                if (loadingElement) loadingElement.remove();
                 
-                mainImage.src = URL.createObjectURL(file);
-                mainImage.style.display = 'block';
+                // 应用尺寸过滤（如果有锁定尺寸）
+                if (this.state.lockedSizeValue) {
+                    this.applySizeFilter();
+                }
                 
-                currentFile.textContent = `当前文件: ${file.name}`;
-                fileSize.textContent = `文件大小: ${formatFileSize(file.size)}`;
-            }
+                // 默认选中第一项
+                const firstItem = this.imageGrid.querySelector('.grid-item');
+                if (firstItem) {
+                    setTimeout(() => {
+                        const index = parseInt(firstItem.dataset.index);
+                        const file = this.state.pngFiles[index];
+                        const width = parseInt(firstItem.dataset.width);
+                        const height = parseInt(firstItem.dataset.height);
+                        
+                        this.selectGridItem(firstItem, file, index, width, height);
+                    }, 100);
+                }
+            },
+            
+            // 选择网格项
+            selectGridItem(gridItem, file, index, width, height) {
+                // 移除之前选中的项
+                if (this.state.selectedItem) {
+                    this.state.selectedItem.classList.remove('active');
+                }
+                
+                // 设置当前项为选中状态
+                gridItem.classList.add('active');
+                this.state.selectedItem = gridItem;
+                
+                // 更新文件信息
+                this.updateFileInfo(file, index, width, height);
+                
+                // 启用锁定尺寸按钮
+                this.lockSizeBtn.disabled = false;
+            },
+            
+            // 更新文件信息
+            updateFileInfo(file, index, width, height) {
+                this.currentFile.textContent = `当前文件: ${file.name}`;
+                this.fileSize.textContent = `文件大小: ${this.formatFileSize(file.size)}`;
+                this.imageDimensions.textContent = `图像尺寸: ${width} × ${height} 像素`;
+                
+                if (this.state.lockedSizeValue) {
+                    this.selectedIndex.textContent = `选中索引: ${index + 1} / ${this.state.filteredFiles.length}`;
+                } else {
+                    this.selectedIndex.textContent = `选中索引: ${index + 1} / ${this.state.pngFiles.length}`;
+                }
+            },
+            
+            // 设置背景
+            setBackground(type) {
+                this.state.currentBackground = type;
+                
+                // 更新所有网格项的背景
+                document.querySelectorAll('.item-bg').forEach(bg => {
+                    bg.className = 'item-bg';
+                    bg.classList.add(type);
+                });
+                
+                // 更新模态框背景
+                if (this.modal.style.display === 'flex') {
+                    this.modalBg.className = 'modal-bg';
+                    this.modalBg.classList.add(type);
+                }
+            },
+            
+            // 切换尺寸锁定
+            toggleSizeLock() {
+                if (!this.state.selectedItem) return;
+                
+                if (this.lockSizeBtn.classList.contains('locked')) {
+                    // 解除锁定
+                    this.state.lockedSizeValue = null;
+                    this.lockedSize.textContent = '锁定尺寸: 无';
+                    
+                    // 显示所有图片
+                    const allItems = this.imageGrid.querySelectorAll('.grid-item');
+                    allItems.forEach(item => item.style.display = 'flex');
+                    
+                    // 更新过滤后数量
+                    this.filteredCount.textContent = `过滤后数量: ${allItems.length}`;
+                    
+                    // 更新按钮状态
+                    this.lockSizeBtn.classList.remove('locked');
+                    this.lockSizeBtn.textContent = '锁定当前尺寸';
+                    
+                    // 重置模态框锁定按钮
+                    this.modalLockBtn.textContent = '锁定此尺寸';
+                    this.modalLockBtn.disabled = false;
+                } else {
+                    // 锁定尺寸
+                    const width = this.state.selectedItem.dataset.width;
+                    const height = this.state.selectedItem.dataset.height;
+                    this.state.lockedSizeValue = `${width}x${height}`;
+                    this.lockedSize.textContent = `锁定尺寸: ${width} × ${height}`;
+                    
+                    // 应用尺寸过滤
+                    this.applySizeFilter();
+                    
+                    // 更新按钮状态
+                    this.lockSizeBtn.classList.add('locked');
+                    this.lockSizeBtn.textContent = '解除锁定';
+                }
+            },
+            
+            // 从模态框锁定尺寸
+            lockSizeFromModal() {
+                if (this.state.currentModalSize.width && this.state.currentModalSize.height) {
+                    this.state.lockedSizeValue = `${this.state.currentModalSize.width}x${this.state.currentModalSize.height}`;
+                    this.lockedSize.textContent = `锁定尺寸: ${this.state.currentModalSize.width} × ${this.state.currentModalSize.height}`;
+                    
+                    // 应用尺寸过滤
+                    this.applySizeFilter();
+                    
+                    // 更新按钮状态
+                    this.lockSizeBtn.classList.add('locked');
+                    this.lockSizeBtn.textContent = '解除锁定';
+                    
+                    // 更新模态框锁定按钮状态
+                    this.modalLockBtn.textContent = '已锁定此尺寸';
+                    this.modalLockBtn.disabled = true;
+                }
+            },
+            
+            // 应用尺寸过滤
+            applySizeFilter() {
+                if (!this.state.lockedSizeValue) return;
+                
+                const [targetWidth, targetHeight] = this.state.lockedSizeValue.split('x').map(Number);
+                const allItems = this.imageGrid.querySelectorAll('.grid-item');
+                let visibleCount = 0;
+                
+                allItems.forEach(item => {
+                    const width = parseInt(item.dataset.width);
+                    const height = parseInt(item.dataset.height);
+                    
+                    if (width === targetWidth && height === targetHeight) {
+                        item.style.display = 'flex';
+                        visibleCount++;
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+                
+                this.filteredCount.textContent = `过滤后数量: ${visibleCount}`;
+                
+                // 重新构建过滤后的文件列表
+                this.state.filteredFiles = [];
+                allItems.forEach(item => {
+                    if (item.style.display !== 'none') {
+                        const filename = item.dataset.filename;
+                        const file = this.state.pngFiles.find(f => f.name === filename);
+                        if (file) this.state.filteredFiles.push(file);
+                    }
+                });
+                
+                // 按文件名排序
+                this.state.filteredFiles.sort((a, b) => a.name.localeCompare(b.name));
+                
+                // 如果没有选中项或选中项被隐藏，选择第一个可见项
+                if (!this.state.selectedItem || this.state.selectedItem.style.display === 'none') {
+                    const firstVisible = this.imageGrid.querySelector('.grid-item[style*="display: flex"]');
+                    if (firstVisible) firstVisible.click();
+                }
+            },
+            
+            // 打开模态框
+            openModal(index) {
+                this.state.currentModalIndex = index;
+                const file = this.state.pngFiles[index];
+                const width = parseInt(document.querySelector(`.grid-item[data-index="${index}"]`).dataset.width);
+                const height = parseInt(document.querySelector(`.grid-item[data-index="${index}"]`).dataset.height);
+                
+                this.state.currentModalSize = { width, height };
+                
+                this.modalImage.src = URL.createObjectURL(file);
+                this.modalInfo.textContent = `${file.name} (${index + 1}/${this.state.pngFiles.length})`;
+                
+                // 设置模态框背景
+                this.modalBg.className = 'modal-bg';
+                this.modalBg.classList.add(this.state.currentBackground);
+                
+                // 设置模态框锁定按钮状态
+                if (this.state.lockedSizeValue === `${width}x${height}`) {
+                    this.modalLockBtn.textContent = '已锁定此尺寸';
+                    this.modalLockBtn.disabled = true;
+                } else {
+                    this.modalLockBtn.textContent = '锁定此尺寸';
+                    this.modalLockBtn.disabled = false;
+                }
+                
+                this.modal.style.display = 'flex';
+                
+                // 停止模态框的播放
+                this.stopModalPlayback();
+            },
+            
+            // 关闭模态框
+            closeModal() {
+                this.modal.style.display = 'none';
+                this.stopModalPlayback();
+            },
+            
+            // 停止模态框
+            stopModal() {
+                this.modal.style.display = 'none';
+                this.stopModalPlayback();
+            },
+            
+            // 模态框导航
+            navigateModal(direction) {
+                if (this.state.pngFiles.length === 0) return;
+                
+                // 确定要显示的下一张图片
+                let nextIndex;
+                if (this.state.lockedSizeValue) {
+                    // 如果已锁定尺寸，则只显示相同尺寸的图片
+                    const visibleItems = Array.from(document.querySelectorAll('.grid-item')).filter(item => 
+                        item.style.display !== 'none'
+                    );
+                    
+                    if (visibleItems.length === 0) return;
+                    
+                    const currentVisibleIndex = visibleItems.findIndex(item => 
+                        parseInt(item.dataset.index) === this.state.currentModalIndex
+                    );
+                    
+                    if (direction === 'prev') {
+                        nextIndex = (currentVisibleIndex - 1 + visibleItems.length) % visibleItems.length;
+                    } else {
+                        nextIndex = (currentVisibleIndex + 1) % visibleItems.length;
+                    }
+                    
+                    this.state.currentModalIndex = parseInt(visibleItems[nextIndex].dataset.index);
+                } else {
+                    if (direction === 'prev') {
+                        this.state.currentModalIndex = (this.state.currentModalIndex - 1 + this.state.pngFiles.length) % this.state.pngFiles.length;
+                    } else {
+                        this.state.currentModalIndex = (this.state.currentModalIndex + 1) % this.state.pngFiles.length;
+                    }
+                }
+                
+                const file = this.state.pngFiles[this.state.currentModalIndex];
+                const width = parseInt(document.querySelector(`.grid-item[data-index="${this.state.currentModalIndex}"]`).dataset.width);
+                const height = parseInt(document.querySelector(`.grid-item[data-index="${this.state.currentModalIndex}"]`).dataset.height);
+                
+                this.state.currentModalSize = { width, height };
+                
+                this.modalImage.src = URL.createObjectURL(file);
+                this.modalInfo.textContent = `${file.name} (${this.state.currentModalIndex + 1}/${this.state.pngFiles.length})`;
+            },
+            
+            // 开始模态框播放
+            startModalPlayback() {
+                if (this.state.pngFiles.length === 0) return;
+                
+                this.state.isModalPlaying = true;
+                this.modalPlay.disabled = true;
+                this.modalPause.disabled = false;
+                
+                if (this.state.modalPlaybackInterval) {
+                    clearInterval(this.state.modalPlaybackInterval);
+                }
+                
+                const fps = parseInt(this.fpsInput.value) || 33;
+                const interval = 1000 / fps;
+                
+                this.state.modalPlaybackInterval = setInterval(() => {
+                    // 确定要显示的下一张图片
+                    let nextIndex;
+                    if (this.state.lockedSizeValue) {
+                        // 如果已锁定尺寸，则只显示相同尺寸的图片
+                        const visibleItems = Array.from(document.querySelectorAll('.grid-item')).filter(item => 
+                            item.style.display !== 'none'
+                        );
+                        
+                        if (visibleItems.length === 0) {
+                            this.stopModalPlayback();
+                            return;
+                        }
+                        
+                        const currentVisibleIndex = visibleItems.findIndex(item => 
+                            parseInt(item.dataset.index) === this.state.currentModalIndex
+                        );
+                        
+                        nextIndex = (currentVisibleIndex + 1) % visibleItems.length;
+                        this.state.currentModalIndex = parseInt(visibleItems[nextIndex].dataset.index);
+                    } else {
+                        this.state.currentModalIndex = (this.state.currentModalIndex + 1) % this.state.pngFiles.length;
+                    }
+                    
+                    const file = this.state.pngFiles[this.state.currentModalIndex];
+                    const width = parseInt(document.querySelector(`.grid-item[data-index="${this.state.currentModalIndex}"]`).dataset.width);
+                    const height = parseInt(document.querySelector(`.grid-item[data-index="${this.state.currentModalIndex}"]`).dataset.height);
+                    
+                    this.state.currentModalSize = { width, height };
+                    
+                    this.modalImage.src = URL.createObjectURL(file);
+                    this.modalInfo.textContent = `${file.name} (${this.state.currentModalIndex + 1}/${this.state.pngFiles.length})`;
+                }, interval);
+            },
+            
+            // 停止模态框播放
+            stopModalPlayback() {
+                this.state.isModalPlaying = false;
+                this.modalPlay.disabled = false;
+                this.modalPause.disabled = true;
+                
+                if (this.state.modalPlaybackInterval) {
+                    clearInterval(this.state.modalPlaybackInterval);
+                    this.state.modalPlaybackInterval = null;
+                }
+            },
+            
+            // 处理缩放
+            handleZoom(e) {
+                if (!this.state.isCtrlPressed) return;
+                
+                e.preventDefault();
+                
+                // 计算缩放比例
+                const delta = e.deltaY > 0 ? -0.1 : 0.1;
+                this.state.scale = Math.min(Math.max(0.5, this.state.scale + delta), 3);
+                
+                // 应用缩放
+                this.imageGrid.style.transform = `scale(${this.state.scale})`;
+                
+                // 显示缩放比例
+                this.zoomInfo.textContent = `缩放: ${Math.round(this.state.scale * 100)}%`;
+                this.zoomInfo.style.display = 'block';
+                
+                // 3秒后隐藏缩放信息
+                clearTimeout(this.zoomInfo.timeout);
+                this.zoomInfo.timeout = setTimeout(() => {
+                    this.zoomInfo.style.display = 'none';
+                }, 3000);
+            },
             
             // 格式化文件大小
-            function formatFileSize(bytes) {
+            formatFileSize(bytes) {
                 if (bytes === 0) return '0 Bytes';
                 
                 const k = 1024;
@@ -420,23 +1205,10 @@
                 
                 return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
             }
-            
-            // 初始化背景
-            setBackground('checkerboard');
-            
-            // 添加键盘导航支持
-            document.addEventListener('keydown', function(e) {
-                if (pngFiles.length === 0) return;
-                
-                if (e.key === 'ArrowRight') {
-                    const nextIndex = (currentIndex + 1) % pngFiles.length;
-                    document.querySelectorAll('.thumbnail')[nextIndex].click();
-                } else if (e.key === 'ArrowLeft') {
-                    const prevIndex = (currentIndex - 1 + pngFiles.length) % pngFiles.length;
-                    document.querySelectorAll('.thumbnail')[prevIndex].click();
-                }
-            });
-        });
+        };
+        
+        // 初始化应用
+        document.addEventListener('DOMContentLoaded', () => PNGViewer.init());
     </script>
 </body>
 </html>
