@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PNG文件查看器 - 优化版</title>
+    <title>PNG文件查看器</title>
     <style>
         * {
             margin: 0;
@@ -388,6 +388,7 @@
             max-width: 100%;
             max-height: 80vh;
             box-shadow: 0 5px 25px rgba(0, 0, 0, 0.5);
+            cursor: crosshair;
         }
         
         .modal-controls {
@@ -471,6 +472,34 @@
             display: none;
         }
         
+        /* 取色器样式 */
+        .color-picker {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            z-index: 3;
+            display: none;
+        }
+        
+        .color-preview {
+            width: 20px;
+            height: 20px;
+            border: 1px solid white;
+            margin-right: 5px;
+            display: inline-block;
+            vertical-align: middle;
+        }
+        
+        .color-info {
+            display: inline-block;
+            vertical-align: middle;
+        }
+        
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
@@ -500,6 +529,18 @@
                 grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
                 gap: 15px;
                 padding: 15px;
+            }
+            
+            .color-picker {
+                top: 5px;
+                right: 5px;
+                font-size: 10px;
+                padding: 5px;
+            }
+            
+            .color-preview {
+                width: 15px;
+                height: 15px;
             }
         }
     </style>
@@ -555,6 +596,7 @@
                     <li>在弹框中使用播放控制按钮可以自动播放图片</li>
                     <li>可以调整帧率控制播放速度（默认33fps）</li>
                     <li>使用Ctrl+滚轮可以缩放右侧图片网格</li>
+                    <li>在弹框中移动鼠标可以查看鼠标位置的RGBA颜色值</li>
                     <li>支持的浏览器: Chrome, Edge, Firefox等现代浏览器</li>
                 </ul>
             </div>
@@ -581,6 +623,10 @@
         <div class="modal-content">
             <div class="modal-bg" id="modal-bg"></div>
             <img class="modal-image" id="modal-image">
+            <div class="color-picker" id="color-picker">
+                <div class="color-preview" id="color-preview"></div>
+                <div class="color-info" id="color-info">RGBA: 0, 0, 0, 0</div>
+            </div>
             <button class="modal-close" id="modal-close">×</button>
             <div class="modal-info" id="modal-info"></div>
             <button class="modal-lock-btn" id="modal-lock-btn">锁定此尺寸</button>
@@ -639,6 +685,15 @@
                 this.modalNext = document.getElementById('modal-next');
                 this.modalStop = document.getElementById('modal-stop');
                 this.modalLockBtn = document.getElementById('modal-lock-btn');
+                
+                // 取色器元素
+                this.colorPicker = document.getElementById('color-picker');
+                this.colorPreview = document.getElementById('color-preview');
+                this.colorInfo = document.getElementById('color-info');
+                
+                // 创建离屏canvas用于颜色提取
+                this.canvas = document.createElement('canvas');
+                this.ctx = this.canvas.getContext('2d');
             },
             
             // 绑定事件
@@ -668,6 +723,10 @@
                 this.modalPlay.addEventListener('click', () => this.startModalPlayback());
                 this.modalPause.addEventListener('click', () => this.stopModalPlayback());
                 this.modalStop.addEventListener('click', () => this.stopModal());
+                
+                // 取色器事件
+                this.modalImage.addEventListener('mousemove', (e) => this.handleColorPicker(e));
+                this.modalImage.addEventListener('mouseleave', () => this.hideColorPicker());
                 
                 // 缩放控制
                 document.addEventListener('keydown', (e) => {
@@ -1058,12 +1117,14 @@
             closeModal() {
                 this.modal.style.display = 'none';
                 this.stopModalPlayback();
+                this.hideColorPicker();
             },
             
             // 停止模态框
             stopModal() {
                 this.modal.style.display = 'none';
                 this.stopModalPlayback();
+                this.hideColorPicker();
             },
             
             // 模态框导航
@@ -1169,6 +1230,55 @@
                     clearInterval(this.state.modalPlaybackInterval);
                     this.state.modalPlaybackInterval = null;
                 }
+            },
+            
+            // 处理取色器
+            handleColorPicker(e) {
+                if (!this.modalImage.complete || this.modalImage.naturalWidth === 0) return;
+                
+                // 显示取色器
+                this.colorPicker.style.display = 'block';
+                
+                // 获取鼠标在图片上的相对位置
+                const rect = this.modalImage.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                // 设置canvas尺寸与图片相同
+                this.canvas.width = this.modalImage.naturalWidth;
+                this.canvas.height = this.modalImage.naturalHeight;
+                
+                // 绘制图片到canvas
+                this.ctx.drawImage(this.modalImage, 0, 0, this.canvas.width, this.canvas.height);
+                
+                // 计算实际像素位置（考虑图片缩放）
+                const scaleX = this.modalImage.naturalWidth / rect.width;
+                const scaleY = this.modalImage.naturalHeight / rect.height;
+                const pixelX = Math.floor(x * scaleX);
+                const pixelY = Math.floor(y * scaleY);
+                
+                // 确保坐标在图片范围内
+                if (pixelX >= 0 && pixelX < this.canvas.width && pixelY >= 0 && pixelY < this.canvas.height) {
+                    // 获取像素数据
+                    const pixelData = this.ctx.getImageData(pixelX, pixelY, 1, 1).data;
+                    const r = pixelData[0];
+                    const g = pixelData[1];
+                    const b = pixelData[2];
+                    const a = pixelData[3];
+                    
+                    // 更新取色器显示
+                    this.colorPreview.style.backgroundColor = `rgba(${r}, ${g}, ${b},${a})`;
+                    this.colorInfo.textContent = `RGBA: ${r}, ${g}, ${b}, ${a}`;
+                    
+                    // 更新取色器位置
+                    this.colorPicker.style.top = `${e.clientY - rect.top + 10}px`;
+                    this.colorPicker.style.left = `${e.clientX - rect.left + 10}px`;
+                }
+            },
+            
+            // 隐藏取色器
+            hideColorPicker() {
+                this.colorPicker.style.display = 'none';
             },
             
             // 处理缩放
