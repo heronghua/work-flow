@@ -1,0 +1,1768 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>多格式图像查看器</title>
+    <style>
+        /* 样式保持不变，与原始代码相同 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            display: flex;
+            min-height: 100vh;
+            background: #2c3e50;
+            color: #ecf0f1;
+            overflow: hidden;
+        }
+        
+        .container {
+            display: flex;
+            width: 100%;
+            height: 100vh;
+        }
+        
+        .sidebar {
+            width: 300px;
+            background: #34495e;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.2);
+            z-index: 10;
+            overflow-y: auto;
+        }
+        
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+            background: #2c3e50;
+        }
+        
+        h1 {
+            font-size: 1.8rem;
+            margin-bottom: 20px;
+            color: #1abc9c;
+            text-align: center;
+        }
+        
+        .folder-selector {
+            margin-bottom: 25px;
+        }
+        
+        .folder-btn {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            background: #1abc9c;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            transition: background 0.3s;
+            text-align: center;
+        }
+        
+        .folder-btn:hover {
+            background: #16a085;
+        }
+        
+        .format-selector {
+            margin-bottom: 25px;
+        }
+        
+        .format-selector h2 {
+            font-size: 1.2rem;
+            margin-bottom: 12px;
+            color: #bdc3c7;
+        }
+        
+        .format-options {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+        
+        .format-option {
+            padding: 10px;
+            border: 2px solid #2c3e50;
+            border-radius: 6px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s;
+            font-size: 12px;
+        }
+        
+        .format-option:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        .format-option.active {
+            border-color: #1abc9c;
+            box-shadow: 0 0 0 2px rgba(26, 188, 156, 0.4);
+        }
+        
+        .background-selector {
+            margin-bottom: 25px;
+        }
+        
+        .background-selector h2 {
+            font-size: 1.2rem;
+            margin-bottom: 12px;
+            color: #bdc3c7;
+        }
+        
+        .bg-options {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+        
+        .bg-option {
+            padding: 10px;
+            border: 2px solid #2c3e50;
+            border-radius: 6px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s;
+        }
+        
+        .bg-option:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        .bg-option.active {
+            border-color: #1abc9c;
+            box-shadow: 0 0 0 2px rgba(26, 188, 156, 0.4);
+        }
+        
+        .checkerboard {
+            background: linear-gradient(45deg, #ccc 25%, transparent 25%), 
+                        linear-gradient(-45deg, #ccc 25%, transparent 25%), 
+                        linear-gradient(45deg, transparent 75%, #ccc 75%), 
+                        linear-gradient(-45deg, transparent 75%, #ccc 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+        }
+        
+        .red { background-color: #e74c3c; }
+        .white { background-color: #ecf0f1; color: #2c3e50; }
+        .black { background-color: #2c3e50; }
+        
+        .file-info {
+            margin-top: auto;
+            padding: 15px;
+            background: #2c3e50;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        
+        .file-info h2 {
+            margin-bottom: 10px;
+            color: #bdc3c7;
+        }
+        
+        .file-info p {
+            margin: 5px 0;
+        }
+        
+        .image-grid-container {
+            flex: 1;
+            overflow: auto;
+            padding: 20px;
+        }
+        
+        .image-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+            align-content: flex-start;
+            justify-items: center;
+            transform-origin: top left;
+            transition: transform 0.1s ease;
+            width: 100%;
+            min-height: 100%;
+        }
+        
+        .grid-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            padding: 10px;
+            background: rgba(52, 73, 94, 0.5);
+            border-radius: 0;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        
+        .grid-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+            background: rgba(52, 73, 94, 0.8);
+        }
+        
+        .grid-item.active {
+            border: 2px solid #1abc9c;
+            background: rgba(52, 73, 94, 0.9);
+            box-shadow: 0 0 15px rgba(26, 188, 156, 0.4);
+        }
+        
+        .item-container {
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .item-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+        
+        .grid-image {
+            position: relative;
+            z-index: 2;
+            display: block;
+            border-radius: 0;
+            max-width: 100%;
+            max-height: 200px;
+        }
+        
+        .item-filename {
+            margin-top: 10px;
+            font-size: 12px;
+            color: #ecf0f1;
+            text-align: center;
+            word-break: break-all;
+            max-height: 32px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            width: 100%;
+        }
+        
+        .no-images {
+            grid-column: 1 / -1;
+            text-align: center;
+            color: #bdc3c7;
+            font-size: 18px;
+            padding: 40px;
+        }
+        
+        .instructions {
+            margin-top: 20px;
+            padding: 15px;
+            background: #2c3e50;
+            border-radius: 6px;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        
+        .instructions h2 {
+            margin-bottom: 10px;
+            color: #bdc3c7;
+        }
+        
+        .instructions ul {
+            padding-left: 20px;
+        }
+        
+        .instructions li {
+            margin-bottom: 8px;
+        }
+        
+        .grid-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px 0;
+            background: #2c3e50;
+        }
+        
+        .grid-title {
+            font-size: 1.2rem;
+            color: #ecf0f1;
+        }
+        
+        .image-count {
+            font-size: 0.9rem;
+            color: #bdc3c7;
+        }
+        
+        .control-buttons {
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .control-btn {
+            padding: 10px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+            text-align: center;
+        }
+        
+        .control-btn:hover {
+            background: #2980b9;
+        }
+        
+        .control-btn:disabled {
+            background: #7f8c8d;
+            cursor: not-allowed;
+        }
+        
+        .control-btn.active {
+            background: #2ecc71;
+        }
+        
+        .toggle-btn {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .toggle-btn:active {
+            transform: translateY(2px);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+        
+        .toggle-btn.locked {
+            background: #2ecc71;
+            box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+        
+        .fps-control {
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .fps-control label {
+            font-size: 12px;
+            color: #bdc3c7;
+        }
+        
+        .fps-control input {
+            flex: 1;
+            background: #2c3e50;
+            border: 1px solid #7f8c8d;
+            border-radius: 4px;
+            color: #ecf0f1;
+            padding: 5px;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #1abc9c;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        /* 模态框样式 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-content {
+            position: relative;
+            max-width: 90%;
+            max-height: 90%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .modal-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+        
+        .modal-image {
+            position: relative;
+            z-index: 2;
+            max-width: 100%;
+            max-height: 80vh;
+            box-shadow: 0 5px 25px rgba(0, 0, 0, 0.5);
+            cursor: crosshair;
+        }
+        
+        .modal-controls {
+            position: absolute;
+            bottom: -60px;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            padding: 10px;
+        }
+        
+        .modal-btn {
+            padding: 8px 15px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .modal-btn:hover {
+            background: #2980b9;
+        }
+        
+        .modal-close {
+            position: absolute;
+            top: -40px;
+            right: 0;
+            background: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-info {
+            position: absolute;
+            top: -40px;
+            left: 0;
+            color: white;
+            font-size: 14px;
+        }
+        
+        .modal-lock-btn {
+            position: absolute;
+            top: -40px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 5px 10px;
+            background: #9b59b6;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        
+        .modal-lock-btn:hover {
+            background: #8e44ad;
+        }
+        
+        .zoom-info {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 14px;
+            z-index: 20;
+            display: none;
+        }
+        
+        /* 取色器样式 */
+        .color-picker {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            z-index: 3;
+            display: none;
+        }
+        
+        .color-preview {
+            width: 20px;
+            height: 20px;
+            border: 1px solid white;
+            margin-right: 5px;
+            display: inline-block;
+            vertical-align: middle;
+        }
+        
+        .color-info {
+            display: inline-block;
+            vertical-align: middle;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+        
+        @media (max-width: 1024px) {
+            .image-grid {
+                grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+                height: auto;
+            }
+            
+            .image-grid {
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+                gap: 15px;
+                padding: 15px;
+            }
+            
+            .color-picker {
+                top: 5px;
+                right: 5px;
+                font-size: 10px;
+                padding: 5px;
+            }
+            
+            .color-preview {
+                width: 15px;
+                height: 15px;
+            }
+            
+            .format-options {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <h1>多格式图像查看器</h1>
+            
+            <div class="folder-selector">
+                <input type="file" id="folder-input" webkitdirectory directory multiple style="display: none;">
+                <button class="folder-btn" id="folder-btn">选择文件夹</button>
+            </div>
+            
+            <div class="format-selector">
+                <h2>支持格式</h2>
+                <div class="format-options">
+                    <div class="format-option active" data-format="all">所有格式</div>
+                    <div class="format-option" data-format="png">PNG</div>
+                    <div class="format-option" data-format="jpg">JPG</div>
+                    <div class="format-option" data-format="nv21">NV21</div>
+                    <div class="format-option" data-format="yv12">YV12</div>
+                    <div class="format-option" data-format="yv21">YV21</div>
+                    <div class="format-option" data-format="rgba">RGBA8888</div>
+                    <div class="format-option" data-format="raw">RAW</div>
+                </div>
+            </div>
+            
+            <div class="background-selector">
+                <h2>选择背景</h2>
+                <div class="bg-options">
+                    <div class="bg-option active checkerboard" data-bg="checkerboard">棋盘格</div>
+                    <div class="bg-option red" data-bg="red">红色</div>
+                    <div class="bg-option white" data-bg="white">白色</div>
+                    <div class="bg-option black" data-bg="black">黑色</div>
+                </div>
+            </div>
+            
+            <div class="control-buttons">
+                <button class="control-btn toggle-btn" id="lock-size-btn" disabled>锁定当前尺寸</button>
+                
+                <div class="fps-control">
+                    <label for="fps-input">帧率 (fps):</label>
+                    <input type="number" id="fps-input" min="1" max="60" value="33">
+                </div>
+            </div>
+            
+            <div class="file-info">
+                <h2>文件信息</h2>
+                <p id="file-count">已加载文件: 0</p>
+                <p id="current-file">当前文件: 无</p>
+                <p id="file-size">文件大小: 无</p>
+                <p id="image-dimensions">图像尺寸: 无</p>
+                <p id="image-format">图像格式: 无</p>
+                <p id="selected-index">选中索引: 无</p>
+                <p id="locked-size">锁定尺寸: 无</p>
+                <p id="filtered-count">过滤后数量: 0</p>
+            </div>
+            
+            <div class="instructions">
+                <h2>使用说明</h2>
+                <ul>
+                    <li>点击"选择文件夹"按钮选择包含图像文件的文件夹</li>
+                    <li>使用格式选项筛选特定格式的图像</li>
+                    <li>点击网格中的图像查看文件信息</li>
+                    <li>双击图像可以在弹框中查看大图</li>
+                    <li>使用背景选项测试PNG图像的透明度效果</li>
+                    <li>点击"锁定当前尺寸"只显示与当前图片相同尺寸的图片</li>
+                    <li>在弹框中使用播放控制按钮可以自动播放图片</li>
+                    <li>可以调整帧率控制播放速度（默认33fps）</li>
+                    <li>使用Ctrl+滚轮可以缩放右侧图片网格</li>
+                    <li>在弹框中移动鼠标可以查看鼠标位置的RGBA颜色值</li>
+                    <li>支持的浏览器: Chrome, Edge, Firefox等现代浏览器</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div class="grid-header">
+                <div class="grid-title">图像预览</div>
+                <div class="image-count" id="image-count">共 0 个图像</div>
+            </div>
+            
+            <div class="image-grid-container" id="image-grid-container">
+                <div class="image-grid" id="image-grid">
+                    <div class="no-images" id="no-images">
+                        请选择一个包含图像文件的文件夹
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 模态框 -->
+    <div class="modal" id="image-modal">
+        <div class="modal-content">
+            <div class="modal-bg" id="modal-bg"></div>
+            <img class="modal-image" id="modal-image">
+            <div class="color-picker" id="color-picker">
+                <div class="color-preview" id="color-preview"></div>
+                <div class="color-info" id="color-info">RGBA: 0, 0, 0, 0</div>
+            </div>
+            <button class="modal-close" id="modal-close">×</button>
+            <div class="modal-info" id="modal-info"></div>
+            <button class="modal-lock-btn" id="modal-lock-btn">锁定此尺寸</button>
+            <div class="modal-controls">
+                <button class="modal-btn" id="modal-prev">上一张</button>
+                <button class="modal-btn" id="modal-play">播放</button>
+                <button class="modal-btn" id="modal-pause" disabled>暂停</button>
+                <button class="modal-btn" id="modal-next">下一张</button>
+                <button class="modal-btn" id="modal-stop">停止</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="zoom-info" id="zoom-info">缩放: 100%</div>
+
+    <script>
+        // 多格式图像查看器应用
+        const MultiFormatImageViewer = {
+            // 支持的图像格式及其文件扩展名
+            supportedFormats: {
+                png: ['.png'],
+                jpg: ['.jpg', '.jpeg'],
+                nv21: ['.nv21', '.yuv'],
+                yv12: ['.yv12', '.yuv'],
+                yv21: ['.yv21', '.yuv'],
+                rgba: ['.rgba', '.raw'],
+                raw: ['.raw', '.bin'],
+                all: [] // 所有格式
+            },
+            
+            // 当前选中的格式
+            currentFormat: 'all',
+            
+            // 初始化应用
+            init() {
+                this.cacheElements();
+                this.bindEvents();
+                this.setBackground('checkerboard');
+            },
+            
+            // 缓存DOM元素
+            cacheElements() {
+                // 主界面元素
+                this.folderInput = document.getElementById('folder-input');
+                this.folderBtn = document.getElementById('folder-btn');
+                this.formatOptions = document.querySelectorAll('.format-option');
+                this.bgOptions = document.querySelectorAll('.bg-option');
+                this.imageGridContainer = document.getElementById('image-grid-container');
+                this.imageGrid = document.getElementById('image-grid');
+                this.noImages = document.getElementById('no-images');
+                this.fileCount = document.getElementById('file-count');
+                this.currentFile = document.getElementById('current-file');
+                this.fileSize = document.getElementById('file-size');
+                this.imageDimensions = document.getElementById('image-dimensions');
+                this.imageFormat = document.getElementById('image-format');
+                this.selectedIndex = document.getElementById('selected-index');
+                this.imageCount = document.getElementById('image-count');
+                this.lockedSize = document.getElementById('locked-size');
+                this.filteredCount = document.getElementById('filtered-count');
+                this.lockSizeBtn = document.getElementById('lock-size-btn');
+                this.fpsInput = document.getElementById('fps-input');
+                this.zoomInfo = document.getElementById('zoom-info');
+                
+                // 模态框元素
+                this.modal = document.getElementById('image-modal');
+                this.modalBg = document.getElementById('modal-bg');
+                this.modalImage = document.getElementById('modal-image');
+                this.modalClose = document.getElementById('modal-close');
+                this.modalInfo = document.getElementById('modal-info');
+                this.modalPrev = document.getElementById('modal-prev');
+                this.modalPlay = document.getElementById('modal-play');
+                this.modalPause = document.getElementById('modal-pause');
+                this.modalNext = document.getElementById('modal-next');
+                this.modalStop = document.getElementById('modal-stop');
+                this.modalLockBtn = document.getElementById('modal-lock-btn');
+                
+                // 取色器元素
+                this.colorPicker = document.getElementById('color-picker');
+                this.colorPreview = document.getElementById('color-preview');
+                this.colorInfo = document.getElementById('color-info');
+                
+                // 创建离屏canvas用于颜色提取
+                this.canvas = document.createElement('canvas');
+                this.ctx = this.canvas.getContext('2d');
+            },
+            
+            // 绑定事件
+            bindEvents() {
+                // 文件夹选择
+                this.folderBtn.addEventListener('click', () => this.folderInput.click());
+                this.folderInput.addEventListener('change', (e) => this.handleFolderSelect(e));
+                
+                // 格式选择
+                this.formatOptions.forEach(option => {
+                    option.addEventListener('click', () => {
+                        const format = option.getAttribute('data-format');
+                        this.setFormat(format);
+                        this.formatOptions.forEach(opt => opt.classList.remove('active'));
+                        option.classList.add('active');
+                    });
+                });
+                
+                // 背景选择
+                this.bgOptions.forEach(option => {
+                    option.addEventListener('click', () => {
+                        const bgType = option.getAttribute('data-bg');
+                        this.setBackground(bgType);
+                        this.bgOptions.forEach(opt => opt.classList.remove('active'));
+                        option.classList.add('active');
+                    });
+                });
+                
+                // 锁定尺寸按钮
+                this.lockSizeBtn.addEventListener('click', () => this.toggleSizeLock());
+                
+                // 模态框事件
+                this.modalClose.addEventListener('click', () => this.closeModal());
+                this.modalLockBtn.addEventListener('click', () => this.lockSizeFromModal());
+                this.modalPrev.addEventListener('click', () => this.navigateModal('prev'));
+                this.modalNext.addEventListener('click', () => this.navigateModal('next'));
+                this.modalPlay.addEventListener('click', () => this.startModalPlayback());
+                this.modalPause.addEventListener('click', () => this.stopModalPlayback());
+                this.modalStop.addEventListener('click', () => this.stopModal());
+                
+                // 取色器事件
+                this.modalImage.addEventListener('mousemove', (e) => this.handleColorPicker(e));
+                this.modalImage.addEventListener('mouseleave', () => this.hideColorPicker());
+                
+                // 缩放控制
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Control') this.isCtrlPressed = true;
+                });
+                
+                document.addEventListener('keyup', (e) => {
+                    if (e.key === 'Control') this.isCtrlPressed = false;
+                });
+                
+                this.imageGridContainer.addEventListener('wheel', (e) => this.handleZoom(e));
+            },
+            
+            // 应用状态
+            state: {
+                imageFiles: [],
+                currentBackground: 'checkerboard',
+                selectedItem: null,
+                lockedSizeValue: null,
+                filteredFiles: [],
+                currentModalIndex: 0,
+                modalPlaybackInterval: null,
+                isModalPlaying: false,
+                currentModalSize: { width: 0, height: 0 },
+                scale: 1,
+                isCtrlPressed: false
+            },
+            
+            // 设置当前格式
+            setFormat(format) {
+                this.currentFormat = format;
+                
+                // 如果有已加载的文件，重新过滤显示
+                if (this.state.imageFiles.length > 0) {
+                    this.applyFormatFilter();
+                }
+            },
+            
+            // 处理文件夹选择
+            handleFolderSelect(event) {
+                const files = Array.from(event.target.files);
+                
+                // 过滤文件，只保留支持的格式
+                this.state.imageFiles = this.filterFilesByFormat(files);
+                
+                this.fileCount.textContent = `已加载文件: ${this.state.imageFiles.length}`;
+                this.imageCount.textContent = `共 ${this.state.imageFiles.length} 个图像`;
+                
+                // 重置状态
+                this.resetState();
+                
+                if (this.state.imageFiles.length === 0) {
+                    this.showNoImagesMessage();
+                    return;
+                }
+                
+                this.renderImageGrid();
+            },
+            
+            // 根据格式过滤文件
+            filterFilesByFormat(files) {
+                // 定义所有支持的图像格式扩展名
+                const supportedExtensions = [
+                    '.png', '.jpg', '.jpeg', 
+                    '.nv21', '.yuv', '.yv12', '.yv21', 
+                    '.rgba', '.raw', '.bin'
+                ];
+                
+                // 过滤文件，只保留支持的格式
+                const filteredFiles = files.filter(file => {
+                    const fileName = file.name.toLowerCase();
+                    return supportedExtensions.some(ext => fileName.endsWith(ext));
+                });
+                
+                // 如果当前格式是"all"，返回所有支持的文件
+                if (this.currentFormat === 'all') {
+                    return filteredFiles;
+                }
+                
+                // 否则，进一步按特定格式过滤
+                const extensions = this.supportedFormats[this.currentFormat];
+                return filteredFiles.filter(file => {
+                    const fileName = file.name.toLowerCase();
+                    return extensions.some(ext => fileName.endsWith(ext));
+                });
+            },
+            
+            // 应用格式过滤
+            applyFormatFilter() {
+                const allFiles = Array.from(this.folderInput.files || []);
+                this.state.imageFiles = this.filterFilesByFormat(allFiles);
+                
+                this.fileCount.textContent = `已加载文件: ${this.state.imageFiles.length}`;
+                this.imageCount.textContent = `共 ${this.state.imageFiles.length} 个图像`;
+                
+                if (this.state.imageFiles.length === 0) {
+                    this.showNoImagesMessage();
+                    return;
+                }
+                
+                // 重新渲染网格
+                this.renderImageGrid();
+            },
+            
+            // 重置应用状态
+            resetState() {
+                this.state.lockedSizeValue = null;
+                this.lockedSize.textContent = '锁定尺寸: 无';
+                this.lockSizeBtn.disabled = this.state.imageFiles.length === 0;
+                this.lockSizeBtn.classList.remove('locked');
+                this.lockSizeBtn.textContent = '锁定当前尺寸';
+            },
+            
+            // 显示无图片消息
+            showNoImagesMessage() {
+                this.noImages.style.display = 'block';
+                this.imageGrid.innerHTML = '';
+                
+                const noImgDiv = document.createElement('div');
+                noImgDiv.classList.add('no-images');
+                noImgDiv.textContent = '请选择一个包含图像文件的文件夹';
+                this.imageGrid.appendChild(noImgDiv);
+                
+                this.currentFile.textContent = '当前文件: 无';
+                this.fileSize.textContent = '文件大小: 无';
+                this.imageDimensions.textContent = '图像尺寸: 无';
+                this.imageFormat.textContent = '图像格式: 无';
+                this.selectedIndex.textContent = '选中索引: 无';
+                this.filteredCount.textContent = '过滤后数量: 0';
+            },
+            
+            // 渲染图片网格
+            renderImageGrid() {
+                this.noImages.style.display = 'none';
+                this.imageGrid.innerHTML = '';
+                
+                // 显示加载状态
+                const loadingDiv = document.createElement('div');
+                loadingDiv.style.gridColumn = '1 / -1';
+                loadingDiv.style.textAlign = 'center';
+                loadingDiv.style.padding = '20px';
+                loadingDiv.innerHTML = '<div class="loading"></div><p style="margin-top: 10px;">加载图片中...</p>';
+                this.imageGrid.appendChild(loadingDiv);
+                
+                // 生成网格项
+                let loadedCount = 0;
+                
+                this.state.imageFiles.forEach((file, index) => {
+                    const fileExtension = file.name.split('.').pop().toLowerCase();
+                    
+                    // 根据文件格式使用不同的加载方式
+                    if (['png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp'].includes(fileExtension)) {
+                        // 标准图像格式，使用Image对象加载
+                        this.loadStandardImage(file, index, loadedCount);
+                    } else {
+                        // 特殊格式，使用相应的解码器
+                        this.loadSpecialFormatImage(file, index, loadedCount, fileExtension);
+                    }
+                    
+                    loadedCount++;
+                });
+            },
+            
+            // 加载标准图像格式
+            loadStandardImage(file, index, loadedCount) {
+                const img = new Image();
+                img.src = URL.createObjectURL(file);
+                
+                img.onload = () => {
+                    this.createGridItem(file, index, img.naturalWidth, img.naturalHeight, file.name.split('.').pop());
+                    
+                    // 移除加载指示器（如果是最后一个图片）
+                    if (loadedCount === this.state.imageFiles.length - 1) {
+                        this.finishImageLoading();
+                    }
+                };
+                
+                img.onerror = () => {
+                    console.error('图片加载失败:', file.name);
+                    
+                    // 如果所有图片都处理完毕，移除加载指示器
+                    if (loadedCount === this.state.imageFiles.length - 1) {
+                        this.finishImageLoading();
+                    }
+                };
+            },
+            
+            // 加载特殊格式图像
+            loadSpecialFormatImage(file, index, loadedCount, format) {
+                const reader = new FileReader();
+                
+                reader.onload = (e) => {
+                    try {
+                        // 根据格式调用相应的解码器
+                        const imageData = this.decodeImageData(e.target.result, format, file);
+                        
+                        if (imageData) {
+                            this.createGridItem(file, index, imageData.width, imageData.height, format, imageData.dataUrl);
+                        }
+                    } catch (error) {
+                        console.error(`解码 ${format} 图像失败:`, error);
+                    }
+                    
+                    // 移除加载指示器（如果是最后一个图片）
+                    if (loadedCount === this.state.imageFiles.length - 1) {
+                        this.finishImageLoading();
+                    }
+                };
+                
+                reader.onerror = () => {
+                    console.error('读取文件失败:', file.name);
+                    
+                    // 如果所有图片都处理完毕，移除加载指示器
+                    if (loadedCount === this.state.imageFiles.length - 1) {
+                        this.finishImageLoading();
+                    }
+                };
+                
+                // 读取文件内容
+                if (format === 'nv21' || format === 'yv12' || format === 'yv21' || format === 'rgba') {
+                    reader.readAsArrayBuffer(file);
+                } else {
+                    reader.readAsDataURL(file);
+                }
+            },
+            
+            // 解码图像数据
+            decodeImageData(arrayBuffer, format, file) {
+                // 从文件名中提取尺寸信息
+                const dimensions = this.extractDimensionsFromFilename(file.name);
+                const width = dimensions.width || 640;
+                const height = dimensions.height || 480;
+                
+                let imageData;
+                
+                switch (format) {
+                    case 'nv21':
+                        imageData = this.decodeNV21(arrayBuffer, width, height);
+                        break;
+                    case 'yv12':
+                        imageData = this.decodeYV12(arrayBuffer, width, height);
+                        break;
+                    case 'yv21':
+                        imageData = this.decodeYV21(arrayBuffer, width, height);
+                        break;
+                    case 'rgba':
+                        imageData = this.decodeRGBA8888(arrayBuffer, width, height);
+                        break;
+                    default:
+                        // 默认处理为原始数据
+                        imageData = this.decodeRawData(arrayBuffer, width, height);
+                        break;
+                }
+                
+                // 将ImageData转换为数据URL
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.putImageData(imageData, 0, 0);
+                
+                return {
+                    width,
+                    height,
+                    dataUrl: canvas.toDataURL()
+                };
+            },
+            
+            // 从文件名中提取尺寸信息
+            extractDimensionsFromFilename(filename) {
+                // 尝试从文件名中提取尺寸信息，例如：image_640x480.nv21
+                const regex = /_(\d+)x(\d+)\./;
+                const match = filename.match(regex);
+                
+                if (match && match.length >= 3) {
+                    return {
+                        width: parseInt(match[1]),
+                        height: parseInt(match[2])
+                    };
+                }
+                
+                // 默认尺寸
+                return { width: 640, height: 480 };
+            },
+            
+            // 解码NV21格式
+            decodeNV21(arrayBuffer, width, height) {
+                const data = new Uint8Array(arrayBuffer);
+                const ySize = width * height;
+                const uvSize = ySize / 2;
+                
+                const rgbaData = new Uint8ClampedArray(width * height * 4);
+                
+                for (let y = 0; y < height; y++) {
+                    for (let x = 0; x < width; x++) {
+                        const yIndex = y * width + x;
+                        const uvIndex = ySize + Math.floor(y / 2) * width + (x & ~1);
+                        
+                        const Y = data[yIndex];
+                        const V = data[uvIndex];
+                        const U = data[uvIndex + 1];
+                        
+                        // YUV to RGB转换
+                        const R = Y + 1.402 * (V - 128);
+                        const G = Y - 0.344 * (U - 128) - 0.714 * (V - 128);
+                        const B = Y + 1.772 * (U - 128);
+                        
+                        const rgbaIndex = yIndex * 4;
+                        rgbaData[rgbaIndex] = this.clamp(R);
+                        rgbaData[rgbaIndex + 1] = this.clamp(G);
+                        rgbaData[rgbaIndex + 2] = this.clamp(B);
+                        rgbaData[rgbaIndex + 3] = 255; // Alpha
+                    }
+                }
+                
+                return new ImageData(rgbaData, width, height);
+            },
+            
+            // 解码YV12格式
+            decodeYV12(arrayBuffer, width, height) {
+                const data = new Uint8Array(arrayBuffer);
+                const ySize = width * height;
+                const uvSize = ySize / 4;
+                
+                const rgbaData = new Uint8ClampedArray(width * height * 4);
+                
+                for (let y = 0; y < height; y++) {
+                    for (let x = 0; x < width; x++) {
+                        const yIndex = y * width + x;
+                        const uIndex = ySize + Math.floor(y / 2) * Math.floor(width / 2) + Math.floor(x / 2);
+                        const vIndex = ySize + uvSize + Math.floor(y / 2) * Math.floor(width / 2) + Math.floor(x / 2);
+                        
+                        const Y = data[yIndex];
+                        const U = data[uIndex];
+                        const V = data[vIndex];
+                        
+                        // YUV to RGB转换
+                        const R = Y + 1.402 * (V - 128);
+                        const G = Y - 0.344 * (U - 128) - 0.714 * (V - 128);
+                        const B = Y + 1.772 * (U - 128);
+                        
+                        const rgbaIndex = yIndex * 4;
+                        rgbaData[rgbaIndex] = this.clamp(R);
+                        rgbaData[rgbaIndex + 1] = this.clamp(G);
+                        rgbaData[rgbaIndex + 2] = this.clamp(B);
+                        rgbaData[rgbaIndex + 3] = 255; // Alpha
+                    }
+                }
+                
+                return new ImageData(rgbaData, width, height);
+            },
+            
+            // 解码YV21格式
+            decodeYV21(arrayBuffer, width, height) {
+                const data = new Uint8Array(arrayBuffer);
+                const ySize = width * height;
+                const uvSize = ySize / 4;
+                
+                const rgbaData = new Uint8ClampedArray(width * height * 4);
+                
+                for (let y = 0; y < height; y++) {
+                    for (let x = 0; x < width; x++) {
+                        const yIndex = y * width + x;
+                        const vIndex = ySize + Math.floor(y / 2) * Math.floor(width / 2) + Math.floor(x / 2);
+                        const uIndex = ySize + uvSize + Math.floor(y / 2) * Math.floor(width / 2) + Math.floor(x / 2);
+                        
+                        const Y = data[yIndex];
+                        const V = data[vIndex];
+                        const U = data[uIndex];
+                        
+                        // YUV to RGB转换
+                        const R = Y + 1.402 * (V - 128);
+                        const G = Y - 0.344 * (U - 128) - 0.714 * (V - 128);
+                        const B = Y + 1.772 * (U - 128);
+                        
+                        const rgbaIndex = yIndex * 4;
+                        rgbaData[rgbaIndex] = this.clamp(R);
+                        rgbaData[rgbaIndex + 1] = this.clamp(G);
+                        rgbaData[rgbaIndex + 2] = this.clamp(B);
+                        rgbaData[rgbaIndex + 3] = 255; // Alpha
+                    }
+                }
+                
+                return new ImageData(rgbaData, width, height);
+            },
+            
+            // 解码RGBA8888格式
+            decodeRGBA8888(arrayBuffer, width, height) {
+                const data = new Uint8Array(arrayBuffer);
+                const rgbaData = new Uint8ClampedArray(width * height * 4);
+                
+                for (let i = 0; i < data.length; i++) {
+                    rgbaData[i] = data[i];
+                }
+                
+                return new ImageData(rgbaData, width, height);
+            },
+            
+            // 解码原始数据
+            decodeRawData(arrayBuffer, width, height) {
+                // 默认处理为灰度图像
+                const data = new Uint8Array(arrayBuffer);
+                const rgbaData = new Uint8ClampedArray(width * height * 4);
+                
+                for (let i = 0; i < data.length; i++) {
+                    const rgbaIndex = i * 4;
+                    rgbaData[rgbaIndex] = data[i];     // R
+                    rgbaData[rgbaIndex + 1] = data[i]; // G
+                    rgbaData[rgbaIndex + 2] = data[i]; // B
+                    rgbaData[rgbaIndex + 3] = 255;     // Alpha
+                }
+                
+                return new ImageData(rgbaData, width, height);
+            },
+            
+            // 限制数值范围
+            clamp(value) {
+                return Math.max(0, Math.min(255, value));
+            },
+            
+            // 创建网格项
+            createGridItem(file, index, width, height, format, dataUrl = null) {
+                // 计算显示尺寸，保持宽高比，但限制最大尺寸
+                const maxDisplaySize = 200;
+                let displayWidth = width;
+                let displayHeight = height;
+                
+                if (width > height) {
+                    if (width > maxDisplaySize) {
+                        displayWidth = maxDisplaySize;
+                        displayHeight = Math.round((height / width) * maxDisplaySize);
+                    }
+                } else {
+                    if (height > maxDisplaySize) {
+                        displayHeight = maxDisplaySize;
+                        displayWidth = Math.round((width / height) * maxDisplaySize);
+                    }
+                }
+                
+                const gridItem = document.createElement('div');
+                gridItem.classList.add('grid-item');
+                gridItem.dataset.index = index;
+                gridItem.dataset.width = width;
+                gridItem.dataset.height = height;
+                gridItem.dataset.filename = file.name;
+                gridItem.dataset.format = format;
+                
+                const itemContainer = document.createElement('div');
+                itemContainer.classList.add('item-container');
+                itemContainer.style.width = displayWidth + 'px';
+                itemContainer.style.height = displayHeight + 'px';
+                
+                const itemBg = document.createElement('div');
+                itemBg.classList.add('item-bg');
+                itemBg.classList.add(this.state.currentBackground);
+                itemBg.style.width = '100%';
+                itemBg.style.height = '100%';
+                
+                const gridImage = document.createElement('img');
+                gridImage.classList.add('grid-image');
+                
+                // 使用数据URL或对象URL
+                if (dataUrl) {
+                    gridImage.src = dataUrl;
+                } else {
+                    gridImage.src = URL.createObjectURL(file);
+                }
+                
+                gridImage.alt = file.name;
+                gridImage.style.width = displayWidth + 'px';
+                gridImage.style.height = displayHeight + 'px';
+                
+                const fileName = document.createElement('div');
+                fileName.classList.add('item-filename');
+                fileName.textContent = file.name;
+                fileName.style.width = displayWidth + 'px';
+                
+                itemContainer.appendChild(itemBg);
+                itemContainer.appendChild(gridImage);
+                
+                gridItem.appendChild(itemContainer);
+                gridItem.appendChild(fileName);
+                
+                // 添加事件
+                gridItem.addEventListener('click', () => this.selectGridItem(gridItem, file, index, width, height, format));
+                gridItem.addEventListener('dblclick', () => this.openModal(index));
+                
+                // 添加到网格
+                this.imageGrid.appendChild(gridItem);
+            },
+            
+            // 完成图片加载
+            finishImageLoading() {
+                const loadingElement = this.imageGrid.querySelector('div[style*="grid-column: 1 / -1"]');
+                if (loadingElement) loadingElement.remove();
+                
+                // 应用尺寸过滤（如果有锁定尺寸）
+                if (this.state.lockedSizeValue) {
+                    this.applySizeFilter();
+                }
+                
+                // 默认选中第一项
+                const firstItem = this.imageGrid.querySelector('.grid-item');
+                if (firstItem) {
+                    setTimeout(() => {
+                        const index = parseInt(firstItem.dataset.index);
+                        const file = this.state.imageFiles[index];
+                        const width = parseInt(firstItem.dataset.width);
+                        const height = parseInt(firstItem.dataset.height);
+                        const format = firstItem.dataset.format;
+                        
+                        this.selectGridItem(firstItem, file, index, width, height, format);
+                    }, 100);
+                }
+            },
+            
+            // 选择网格项
+            selectGridItem(gridItem, file, index, width, height, format) {
+                // 移除之前选中的项
+                if (this.state.selectedItem) {
+                    this.state.selectedItem.classList.remove('active');
+                }
+                
+                // 设置当前项为选中状态
+                gridItem.classList.add('active');
+                this.state.selectedItem = gridItem;
+                
+                // 更新文件信息
+                this.updateFileInfo(file, index, width, height, format);
+                
+                // 启用锁定尺寸按钮
+                this.lockSizeBtn.disabled = false;
+            },
+            
+            // 更新文件信息
+            updateFileInfo(file, index, width, height, format) {
+                this.currentFile.textContent = `当前文件: ${file.name}`;
+                this.fileSize.textContent = `文件大小: ${this.formatFileSize(file.size)}`;
+                this.imageDimensions.textContent = `图像尺寸: ${width} × ${height} 像素`;
+                this.imageFormat.textContent = `图像格式: ${format.toUpperCase()}`;
+                
+                if (this.state.lockedSizeValue) {
+                    this.selectedIndex.textContent = `选中索引: ${index + 1} / ${this.state.filteredFiles.length}`;
+                } else {
+                    this.selectedIndex.textContent = `选中索引: ${index + 1} / ${this.state.imageFiles.length}`;
+                }
+            },
+            
+            // 设置背景
+            setBackground(type) {
+                this.state.currentBackground = type;
+                
+                // 更新所有网格项的背景
+                document.querySelectorAll('.item-bg').forEach(bg => {
+                    bg.className = 'item-bg';
+                    bg.classList.add(type);
+                });
+                
+                // 更新模态框背景
+                if (this.modal.style.display === 'flex') {
+                    this.modalBg.className = 'modal-bg';
+                    this.modalBg.classList.add(type);
+                }
+            },
+            
+            // 切换尺寸锁定
+            toggleSizeLock() {
+                if (!this.state.selectedItem) return;
+                
+                if (this.lockSizeBtn.classList.contains('locked')) {
+                    // 解除锁定
+                    this.state.lockedSizeValue = null;
+                    this.lockedSize.textContent = '锁定尺寸: 无';
+                    
+                    // 显示所有图片
+                    const allItems = this.imageGrid.querySelectorAll('.grid-item');
+                    allItems.forEach(item => item.style.display = 'flex');
+                    
+                    // 更新过滤后数量
+                    this.filteredCount.textContent = `过滤后数量: ${allItems.length}`;
+                    
+                    // 更新按钮状态
+                    this.lockSizeBtn.classList.remove('locked');
+                    this.lockSizeBtn.textContent = '锁定当前尺寸';
+                    
+                    // 重置模态框锁定按钮
+                    this.modalLockBtn.textContent = '锁定此尺寸';
+                    this.modalLockBtn.disabled = false;
+                } else {
+                    // 锁定尺寸
+                    const width = this.state.selectedItem.dataset.width;
+                    const height = this.state.selectedItem.dataset.height;
+                    this.state.lockedSizeValue = `${width}x${height}`;
+                    this.lockedSize.textContent = `锁定尺寸: ${width} × ${height}`;
+                    
+                    // 应用尺寸过滤
+                    this.applySizeFilter();
+                    
+                    // 更新按钮状态
+                    this.lockSizeBtn.classList.add('locked');
+                    this.lockSizeBtn.textContent = '解除锁定';
+                }
+            },
+            
+            // 从模态框锁定尺寸
+            lockSizeFromModal() {
+                if (this.state.currentModalSize.width && this.state.currentModalSize.height) {
+                    this.state.lockedSizeValue = `${this.state.currentModalSize.width}x${this.state.currentModalSize.height}`;
+                    this.lockedSize.textContent = `锁定尺寸: ${this.state.currentModalSize.width} × ${this.state.currentModalSize.height}`;
+                    
+                    // 应用尺寸过滤
+                    this.applySizeFilter();
+                    
+                    // 更新按钮状态
+                    this.lockSizeBtn.classList.add('locked');
+                    this.lockSizeBtn.textContent = '解除锁定';
+                    
+                    // 更新模态框锁定按钮状态
+                    this.modalLockBtn.textContent = '已锁定此尺寸';
+                    this.modalLockBtn.disabled = true;
+                }
+            },
+            
+            // 应用尺寸过滤
+            applySizeFilter() {
+                if (!this.state.lockedSizeValue) return;
+                
+                const [targetWidth, targetHeight] = this.state.lockedSizeValue.split('x').map(Number);
+                const allItems = this.imageGrid.querySelectorAll('.grid-item');
+                let visibleCount = 0;
+                
+                allItems.forEach(item => {
+                    const width = parseInt(item.dataset.width);
+                    const height = parseInt(item.dataset.height);
+                    
+                    if (width === targetWidth && height === targetHeight) {
+                        item.style.display = 'flex';
+                        visibleCount++;
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+                
+                this.filteredCount.textContent = `过滤后数量: ${visibleCount}`;
+                
+                // 重新构建过滤后的文件列表
+                this.state.filteredFiles = [];
+                allItems.forEach(item => {
+                    if (item.style.display !== 'none') {
+                        const filename = item.dataset.filename;
+                        const file = this.state.imageFiles.find(f => f.name === filename);
+                        if (file) this.state.filteredFiles.push(file);
+                    }
+                });
+                
+                // 按文件名排序
+                this.state.filteredFiles.sort((a, b) => a.name.localeCompare(b.name));
+                
+                // 如果没有选中项或选中项被隐藏，选择第一个可见项
+                if (!this.state.selectedItem || this.state.selectedItem.style.display === 'none') {
+                    const firstVisible = this.imageGrid.querySelector('.grid-item[style*="display: flex"]');
+                    if (firstVisible) firstVisible.click();
+                }
+            },
+            
+            // 打开模态框
+            openModal(index) {
+                this.state.currentModalIndex = index;
+                const file = this.state.imageFiles[index];
+                const width = parseInt(document.querySelector(`.grid-item[data-index="${index}"]`).dataset.width);
+                const height = parseInt(document.querySelector(`.grid-item[data-index="${index}"]`).dataset.height);
+                const format = document.querySelector(`.grid-item[data-index="${index}"]`).dataset.format;
+                
+                this.state.currentModalSize = { width, height };
+                
+                // 根据格式选择显示方式
+                if (['nv21', 'yv12', 'yv21', 'rgba'].includes(format)) {
+                    // 特殊格式，需要解码
+                    this.decodeAndShowModalImage(file, format, index);
+                } else {
+                    // 标准格式，直接显示
+                    this.modalImage.src = URL.createObjectURL(file);
+                    this.modalInfo.textContent = `${file.name} (${index + 1}/${this.state.imageFiles.length})`;
+                }
+                
+                // 设置模态框背景
+                this.modalBg.className = 'modal-bg';
+                this.modalBg.classList.add(this.state.currentBackground);
+                
+                // 设置模态框锁定按钮状态
+                if (this.state.lockedSizeValue === `${width}x${height}`) {
+                    this.modalLockBtn.textContent = '已锁定此尺寸';
+                    this.modalLockBtn.disabled = true;
+                } else {
+                    this.modalLockBtn.textContent = '锁定此尺寸';
+                    this.modalLockBtn.disabled = false;
+                }
+                
+                this.modal.style.display = 'flex';
+                
+                // 停止模态框的播放
+                this.stopModalPlayback();
+            },
+            
+            // 解码并显示模态框图像
+            decodeAndShowModalImage(file, format, index) {
+                const reader = new FileReader();
+                
+                reader.onload = (e) => {
+                    try {
+                        const imageData = this.decodeImageData(e.target.result, format, file);
+                        
+                        if (imageData) {
+                            this.modalImage.src = imageData.dataUrl;
+                            this.modalInfo.textContent = `${file.name} (${index + 1}/${this.state.imageFiles.length})`;
+                        }
+                    } catch (error) {
+                        console.error(`解码 ${format} 图像失败:`, error);
+                        this.modalInfo.textContent = `解码失败: ${file.name}`;
+                    }
+                };
+                
+                reader.onerror = () => {
+                    console.error('读取文件失败:', file.name);
+                    this.modalInfo.textContent = `读取失败: ${file.name}`;
+                };
+                
+                reader.readAsArrayBuffer(file);
+            },
+            
+            // 关闭模态框
+            closeModal() {
+                this.modal.style.display = 'none';
+                this.stopModalPlayback();
+                this.hideColorPicker();
+            },
+            
+            // 停止模态框
+            stopModal() {
+                this.modal.style.display = 'none';
+                this.stopModalPlayback();
+                this.hideColorPicker();
+            },
+            
+            // 模态框导航
+            navigateModal(direction) {
+                if (this.state.imageFiles.length === 0) return;
+                
+                // 确定要显示的下一张图片
+                let nextIndex;
+                if (this.state.lockedSizeValue) {
+                    // 如果已锁定尺寸，则只显示相同尺寸的图片
+                    const visibleItems = Array.from(document.querySelectorAll('.grid-item')).filter(item => 
+                        item.style.display !== 'none'
+                    );
+                    
+                    if (visibleItems.length === 0) return;
+                    
+                    const currentVisibleIndex = visibleItems.findIndex(item => 
+                        parseInt(item.dataset.index) === this.state.currentModalIndex
+                    );
+                    
+                    if (direction === 'prev') {
+                        nextIndex = (currentVisibleIndex - 1 + visibleItems.length) % visibleItems.length;
+                    } else {
+                        nextIndex = (currentVisibleIndex + 1) % visibleItems.length;
+                    }
+                    
+                    this.state.currentModalIndex = parseInt(visibleItems[nextIndex].dataset.index);
+                } else {
+                    if (direction === 'prev') {
+                        this.state.currentModalIndex = (this.state.currentModalIndex - 1 + this.state.imageFiles.length) % this.state.imageFiles.length;
+                    } else {
+                        this.state.currentModalIndex = (this.state.currentModalIndex + 1) % this.state.imageFiles.length;
+                    }
+                }
+                
+                const file = this.state.imageFiles[this.state.currentModalIndex];
+                const width = parseInt(document.querySelector(`.grid-item[data-index="${this.state.currentModalIndex}"]`).dataset.width);
+                const height = parseInt(document.querySelector(`.grid-item[data-index="${this.state.currentModalIndex}"]`).dataset.height);
+                const format = document.querySelector(`.grid-item[data-index="${this.state.currentModalIndex}"]`).dataset.format;
+                
+                this.state.currentModalSize = { width, height };
+                
+                // 根据格式选择显示方式
+                if (['nv21', 'yv12', 'yv21', 'rgba'].includes(format)) {
+                    // 特殊格式，需要解码
+                    this.decodeAndShowModalImage(file, format, this.state.currentModalIndex);
+                } else {
+                    // 标准格式，直接显示
+                    this.modalImage.src = URL.createObjectURL(file);
+                    this.modalInfo.textContent = `${file.name} (${this.state.currentModalIndex + 1}/${this.state.imageFiles.length})`;
+                }
+            },
+            
+            // 开始模态框播放
+            startModalPlayback() {
+                if (this.state.imageFiles.length === 0) return;
+                
+                this.state.isModalPlaying = true;
+                this.modalPlay.disabled = true;
+                this.modalPause.disabled = false;
+                
+                if (this.state.modalPlaybackInterval) {
+                    clearInterval(this.state.modalPlaybackInterval);
+                }
+                
+                const fps = parseInt(this.fpsInput.value) || 33;
+                const interval = 1000 / fps;
+                
+                this.state.modalPlaybackInterval = setInterval(() => {
+                    // 确定要显示的下一张图片
+                    let nextIndex;
+                    if (this.state.lockedSizeValue) {
+                        // 如果已锁定尺寸，则只显示相同尺寸的图片
+                        const visibleItems = Array.from(document.querySelectorAll('.grid-item')).filter(item => 
+                            item.style.display !== 'none'
+                        );
+                        
+                        if (visibleItems.length === 0) {
+                            this.stopModalPlayback();
+                            return;
+                        }
+                        
+                        const currentVisibleIndex = visibleItems.findIndex(item => 
+                            parseInt(item.dataset.index) === this.state.currentModalIndex
+                        );
+                        
+                        nextIndex = (currentVisibleIndex + 1) % visibleItems.length;
+                        this.state.currentModalIndex = parseInt(visibleItems[nextIndex].dataset.index);
+                    } else {
+                        this.state.currentModalIndex = (this.state.currentModalIndex + 1) % this.state.imageFiles.length;
+                    }
+                    
+                    const file = this.state.imageFiles[this.state.currentModalIndex];
+                    const width = parseInt(document.querySelector(`.grid-item[data-index="${this.state.currentModalIndex}"]`).dataset.width);
+                    const height = parseInt(document.querySelector(`.grid-item[data-index="${this.state.currentModalIndex}"]`).dataset.height);
+                    const format = document.querySelector(`.grid-item[data-index="${this.state.currentModalIndex}"]`).dataset.format;
+                    
+                    this.state.currentModalSize = { width, height };
+                    
+                    // 根据格式选择显示方式
+                    if (['nv21', 'yv12', 'yv21', 'rgba'].includes(format)) {
+                        // 特殊格式，需要解码
+                        this.decodeAndShowModalImage(file, format, this.state.currentModalIndex);
+                    } else {
+                        // 标准格式，直接显示
+                        this.modalImage.src = URL.createObjectURL(file);
+                        this.modalInfo.textContent = `${file.name} (${this.state.currentModalIndex + 1}/${this.state.imageFiles.length})`;
+                    }
+                }, interval);
+            },
+            
+            // 停止模态框播放
+            stopModalPlayback() {
+                this.state.isModalPlaying = false;
+                this.modalPlay.disabled = false;
+                this.modalPause.disabled = true;
+                
+                if (this.state.modalPlaybackInterval) {
+                    clearInterval(this.state.modalPlaybackInterval);
+                    this.state.modalPlaybackInterval = null;
+                }
+            },
+            
+            // 处理取色器
+            handleColorPicker(e) {
+                if (!this.modalImage.complete || this.modalImage.naturalWidth === 0) return;
+                
+                // 显示取色器
+                this.colorPicker.style.display = 'block';
+                
+                // 获取鼠标在图片上的相对位置
+                const rect = this.modalImage.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                // 设置canvas尺寸与图片相同
+                this.canvas.width = this.modalImage.naturalWidth;
+                this.canvas.height = this.modalImage.naturalHeight;
+                
+                // 绘制图片到canvas
+                this.ctx.drawImage(this.modalImage, 0, 0, this.canvas.width, this.canvas.height);
+                
+                // 计算实际像素位置（考虑图片缩放）
+                const scaleX = this.modalImage.naturalWidth / rect.width;
+                const scaleY = this.modalImage.naturalHeight / rect.height;
+                const pixelX = Math.floor(x * scaleX);
+                const pixelY = Math.floor(y * scaleY);
+                
+                // 确保坐标在图片范围内
+                if (pixelX >= 0 && pixelX < this.canvas.width && pixelY >= 0 && pixelY < this.canvas.height) {
+                    // 获取像素数据
+                    const pixelData = this.ctx.getImageData(pixelX, pixelY, 1, 1).data;
+                    const r = pixelData[0];
+                    const g = pixelData[1];
+                    const b = pixelData[2];
+                    const a = pixelData[3]; // Alpha通道值 (0-255)
+                    
+                    // 更新取色器显示 - 直接显示Alpha值而不是百分比
+                    this.colorPreview.style.backgroundColor = `rgba(${r}, ${g}, ${b}, ${a / 255})`;
+                    this.colorInfo.textContent = `RGBA: ${r}, ${g}, ${b}, ${a}`;
+                    
+                    // 更新取色器位置
+                    this.colorPicker.style.top = `${e.clientY - rect.top + 10}px`;
+                    this.colorPicker.style.left = `${e.clientX - rect.left + 10}px`;
+                }
+            },
+            
+            // 隐藏取色器
+            hideColorPicker() {
+                this.colorPicker.style.display = 'none';
+            },
+            
+            // 处理缩放
+            handleZoom(e) {
+                if (!this.state.isCtrlPressed) return;
+                
+                e.preventDefault();
+                
+                // 计算缩放比例
+                const delta = e.deltaY > 0 ? -0.1 : 0.1;
+                this.state.scale = Math.min(Math.max(0.5, this.state.scale + delta), 3);
+                
+                // 应用缩放
+                this.imageGrid.style.transform = `scale(${this.state.scale})`;
+                
+                // 显示缩放比例
+                this.zoomInfo.textContent = `缩放: ${Math.round(this.state.scale * 100)}%`;
+                this.zoomInfo.style.display = 'block';
+                
+                // 3秒后隐藏缩放信息
+                clearTimeout(this.zoomInfo.timeout);
+                this.zoomInfo.timeout = setTimeout(() => {
+                    this.zoomInfo.style.display = 'none';
+                }, 3000);
+            },
+            
+            // 格式化文件大小
+            formatFileSize(bytes) {
+                if (bytes === 0) return '0 Bytes';
+                
+                const k = 1024;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            }
+        };
+        
+        // 初始化应用
+        document.addEventListener('DOMContentLoaded', () => MultiFormatImageViewer.init());
+    </script>
+</body>
+</html>
