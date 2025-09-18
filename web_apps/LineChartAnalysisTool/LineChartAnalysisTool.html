@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>简洁版折线图解析工具</title>
+    <script src="chart.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+            overflow: hidden;
+        }
+        header {
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            color: white;
+            padding: 25px;
+            text-align: center;
+        }
+        h1 {
+            font-size: 2.2rem;
+            margin-bottom: 10px;
+        }
+        .description {
+            font-size: 1rem;
+            opacity: 0.9;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .main-content {
+            display: flex;
+            flex-wrap: wrap;
+            padding: 25px;
+            gap: 25px;
+        }
+        .input-section {
+            flex: 1;
+            min-width: 300px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .chart-section {
+            flex: 2;
+            min-width: 500px;
+        }
+        .section-title {
+            font-size: 1.4rem;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #6a11cb;
+            color: #6a11cb;
+        }
+        .file-input-group {
+            margin-bottom: 10px;
+        }
+        .file-input-label {
+            display: block;
+            padding: 15px;
+            background: #f0f0f0;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s;
+            border: 2px dashed #ccc;
+        }
+        .file-input-label:hover {
+            background: #e0e0e0;
+            border-color: #6a11cb;
+        }
+        .file-name {
+            font-size: 0.9rem;
+            color: #666;
+            margin-top: 8px;
+            text-align: center;
+            word-break: break-all;
+        }
+        button {
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            color: white;
+            border: none;
+            padding: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin-top: 10px;
+        }
+        button:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(106, 17, 203, 0.4);
+        }
+        button:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        .chart-container {
+            position: relative;
+            height: 500px;
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.05);
+        }
+        .message {
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: 500;
+        }
+        .error {
+            background-color: #ffebee;
+            color: #c62828;
+            border: 1px solid #ef9a9a;
+        }
+        .success {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+            border: 1px solid #a5d6a7;
+        }
+        footer {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            font-size: 0.9rem;
+            border-top: 1px solid #eee;
+        }
+        @media (max-width: 768px) {
+            .main-content {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>简洁版折线图解析工具</h1>
+            <p class="description">从文件加载数据和解析器，生成折线图</p>
+        </header>
+
+        <div class="main-content">
+            <div class="input-section">
+                <h2 class="section-title">文件选择</h2>
+                
+                <div class="file-input-group">
+                    <label class="file-input-label">
+                        选择数据文件
+                        <input type="file" id="dataFileInput" accept=".txt,.data,.csv" style="display: none;">
+                    </label>
+                    <div id="dataFileName" class="file-name">未选择文件</div>
+                </div>
+                
+                <div class="file-input-group">
+                    <label class="file-input-label">
+                        选择解析器脚本
+                        <input type="file" id="parserFileInput" accept=".js" style="display: none;">
+                    </label>
+                    <div id="parserFileName" class="file-name">未选择文件</div>
+                </div>
+                
+                <button id="parseBtn" disabled>解析数据并生成图表</button>
+                
+                <div id="messageArea" class="message" style="display: none;"></div>
+            </div>
+            
+            <div class="chart-section">
+                <h2 class="section-title">折线图</h2>
+                <div class="chart-container">
+                    <canvas id="lineChart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <footer>
+            <p>简洁版折线图解析工具 &copy; 2023</p>
+        </footer>
+    </div>
+
+    <!-- 主应用程序逻辑 -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const parseBtn = document.getElementById('parseBtn');
+            const messageArea = document.getElementById('messageArea');
+            const dataFileInput = document.getElementById('dataFileInput');
+            const parserFileInput = document.getElementById('parserFileInput');
+            const dataFileName = document.getElementById('dataFileName');
+            const parserFileName = document.getElementById('parserFileName');
+            
+            let chart = null;
+            let currentParser = null;
+            let dataContent = null;
+            
+            // 检查是否已选择必要的文件
+            function checkFiles() {
+                if (dataContent && currentParser) {
+                    parseBtn.disabled = false;
+                } else {
+                    parseBtn.disabled = true;
+                }
+            }
+            
+            // 数据文件选择事件
+            dataFileInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    dataFileName.textContent = file.name;
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        dataContent = e.target.result;
+                        showMessage(`已加载数据文件: ${file.name}`, 'success');
+                        checkFiles();
+                    };
+                    reader.onerror = function() {
+                        showMessage('读取数据文件时出错', 'error');
+                    };
+                    reader.readAsText(file);
+                }
+            });
+            
+            // 解析器文件选择事件
+            parserFileInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    parserFileName.textContent = file.name;
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        try {
+                            // 动态加载解析器
+                            const parserCode = e.target.result;
+                            const blob = new Blob([parserCode], { type: 'application/javascript' });
+                            const url = URL.createObjectURL(blob);
+                            
+                            // 导入解析器模块
+                            import(url).then(module => {
+                                currentParser = module.default;
+                                showMessage(`已加载解析器: ${file.name}`, 'success');
+                                URL.revokeObjectURL(url);
+                                checkFiles();
+                            }).catch(error => {
+                                showMessage('解析器加载错误: ' + error.message, 'error');
+                                console.error(error);
+                            });
+                        } catch (error) {
+                            showMessage('解析器加载错误: ' + error.message, 'error');
+                            console.error(error);
+                        }
+                    };
+                    reader.onerror = function() {
+                        showMessage('读取解析器文件时出错', 'error');
+                    };
+                    reader.readAsText(file);
+                }
+            });
+            
+            // 解析按钮点击事件
+            parseBtn.addEventListener('click', function() {
+                if (!currentParser) {
+                    showMessage('请先选择解析器脚本文件', 'error');
+                    return;
+                }
+                
+                if (!dataContent) {
+                    showMessage('请先选择数据文件', 'error');
+                    return;
+                }
+                
+                try {
+                    const data = currentParser(dataContent);
+                    renderChart(data);
+                    showMessage('数据解析成功！', 'success');
+                } catch (error) {
+                    showMessage('解析错误: ' + error.message, 'error');
+                    console.error(error);
+                }
+            });
+            
+            // 显示消息
+            function showMessage(message, type) {
+                messageArea.textContent = message;
+                messageArea.className = `message ${type}`;
+                messageArea.style.display = 'block';
+                
+                // 3秒后隐藏消息
+                setTimeout(() => {
+                    messageArea.style.display = 'none';
+                }, 3000);
+            }
+            
+            // 渲染图表
+            function renderChart(data) {
+                const ctx = document.getElementById('lineChart').getContext('2d');
+                
+                // 销毁现有图表
+                if (chart) {
+                    chart.destroy();
+                }
+                
+                // 创建新图表
+                chart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: data.labels,
+                        datasets: data.datasets
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: '数据折线图',
+                                font: {
+                                    size: 18,
+                                    weight: 'bold'
+                                }
+                            },
+                            tooltip: {
+                                mode: 'index',
+                                intersect: false,
+                                backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                                padding: 10,
+                                cornerRadius: 5
+                            },
+                            legend: {
+                                position: 'top',
+                                labels: {
+                                    usePointStyle: true,
+                                    padding: 15
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                grid: {
+                                    drawBorder: false
+                                },
+                                title: {
+                                    display: true,
+                                    text: '数值',
+                                    font: {
+                                        weight: 'bold'
+                                    }
+                                }
+                            },
+                            x: {
+                                grid: {
+                                    display: false
+                                },
+                                title: {
+                                    display: true,
+                                    text: 'X轴',
+                                    font: {
+                                        weight: 'bold'
+                                    }
+                                }
+                            }
+                        },
+                        interaction: {
+                            intersect: false,
+                            mode: 'index'
+                        },
+                        animations: {
+                            tension: {
+                                duration: 1000,
+                                easing: 'linear'
+                            }
+                        }
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>
