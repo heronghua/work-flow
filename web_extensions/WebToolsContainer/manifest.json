@@ -1,0 +1,35 @@
+{
+  "manifest_version": 3,
+  "name": "HTML工具管理器",
+  "version": "1.0",
+  "description": "整理和管理您的HTML工具代码片段",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "clipboardWrite"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "HTML工具管理器"
+  },
+  "sidebar_action": {
+    "default_title": "HTML工具管理器",
+    "default_panel": "sidebar.html",
+    "default_icon": "icon.png"
+  },
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }
+  ],
+  "web_accessible_resources": [{
+    "resources": ["inject.js"],
+    "matches": ["<all_urls>"]
+  }]
+}
