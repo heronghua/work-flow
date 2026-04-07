@@ -17,5 +17,6 @@ add_executable(NV212PNG src/NV212PNG.cpp)
 target_link_libraries(NV212PNG ${OpenCV_LIBRARIES})
 set_target_properties(NV212PNG PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PUBLISH_DIR})
 
-add_executable(TaskQueue src/NV212PNG.cpp)
-set_target_properties(TaskQueue,PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PUBLISH_DIR})
+
+add_executable(RetryUntilSuccess src/RetryUntilSuccess.cpp)
+set_target_properties(RetryUntilSuccess PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PUBLISH_DIR})
