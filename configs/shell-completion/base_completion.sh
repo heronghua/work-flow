@@ -50,3 +50,9 @@ zle -N vi-fzf-completion
 
 # 绑定到 Tab 键
 bindkey '^I' vi-fzf-completion
+
+_retry_until_success_completion() {
+    # 调用程序自身的补全功能
+    COMPREPLY=($( RetryUntilSuccess --complete "${COMP_WORDS[*]}" "$COMP_CWORD" 2>/dev/null ))
+}
+complete -F _retry_until_success_completion RetryUntilSuccess
