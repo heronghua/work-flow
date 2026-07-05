@@ -20,3 +20,6 @@ set_target_properties(NV212PNG PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PUBLISH_DIR
 
 add_executable(RetryUntilSuccess src/RetryUntilSuccess.cpp)
 set_target_properties(RetryUntilSuccess PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PUBLISH_DIR})
+
+add_executable(LearnEnhance src/LearnEnhance.cpp)
+set_target_properties(LearnEnhance PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PUBLISH_DIR})
