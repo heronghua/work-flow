@@ -1,0 +1,236 @@
+#!/bin/bash
+
+# ================================================================
+#   File Name: Log
+#   Author: He Ronghua
+#   Mail: heronghua1989@126.com
+# ================================================================
+
+# -----------------------------------------------
+# Configuration
+# -----------------------------------------------
+LOG_DIR="./logs"
+mkdir -p "$LOG_DIR"
+
+# -----------------------------------------------
+# Logging with time, PID, and TID (compatible with Cygwin)
+# -----------------------------------------------
+TID=$(ps -o tid= -p $$ 2>/dev/null | head -1 | xargs)
+[ -z "$TID" ] && TID=$$
+
+log_info() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] [PID:$$] [TID:$TID] [INFO] $*"
+}
+
+log_debug() {
+    if $DEBUG; then
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] [PID:$$] [TID:$TID] [DEBUG] $*"
+    fi
+}
+
+log_error() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] [PID:$$] [TID:$TID] [ERROR] $*" >&2
+}
+
+# -----------------------------------------------
+# Parse command line arguments
+# -----------------------------------------------
+DEBUG=false
+RECORD=false
+ATRACE=false
+SIMPLEPERF=false
+SIMPLEPERF_DURATION=10
+
+# Default atrace categories (sched, gfx, input, view, wm, am, freq, idle, irq)
+ATRACE_CATEGORIES="sched gfx input view wm am freq idle irq"
+
+# File names
+ATRACE_FILE="$LOG_DIR/trace_$(date +%Y%m%d_%H%M%S).atrace"
+SIMPLEPERF_REMOTE="/data/local/tmp/perf.data"
+SIMPLEPERF_LOCAL="$LOG_DIR/perf_$(date +%Y%m%d_%H%M%S).data"
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --debug)
+            DEBUG=true
+            log_debug "Debug mode enabled."
+            shift
+            ;;
+        --help)
+            echo "Usage: $(basename "$0") [OPTIONS]"
+            echo "Options:"
+            echo "  --debug                     Enable verbose debug logs"
+            echo "  --help                      Show this help message"
+            echo "  --record                    Start screen recording (max 180s, or Ctrl+C to stop early)"
+            echo "  --atrace                    Enable atrace system tracing (default categories)"
+            echo "  --simpleperf                Enable simpleperf CPU profiling (default 10s)"
+            echo "  --simpleperf-duration N     Set simpleperf recording duration in seconds (default: 10)"
+            echo "  --app PACKAGE            Specify app package to profile (when not using root)"
+            exit 0
+            ;;
+        --record)
+            RECORD=true
+            shift
+            ;;
+        --atrace)
+            ATRACE=true
+            shift
+            ;;
+        --simpleperf)
+            SIMPLEPERF=true
+            shift
+            ;;
+        --simpleperf-duration)
+            SIMPLEPERF_DURATION="$2"
+            shift 2
+            ;;
+        --app)
+            SIMPLEPERF_APP="$2"
+            shift 2
+            ;;
+        *)
+            log_error "Unknown option: $1"
+            exit 1
+            ;;
+    esac
+done
+
+# -----------------------------------------------
+# Start background processes and store PIDs
+# -----------------------------------------------
+declare -a BG_PIDS
+
+# 1. adb logcat -b main
+adb logcat -b main > "$LOG_DIR/main.log" &
+PID_MAIN=$!
+BG_PIDS+=($PID_MAIN)
+log_info "Started adb logcat main (PID: $PID_MAIN)"
+
+# 2. adb logcat -b events
+adb logcat -b events > "$LOG_DIR/events.log" &
+PID_EVENTS=$!
+BG_PIDS+=($PID_EVENTS)
+log_info "Started adb logcat events (PID: $PID_EVENTS)"
+
+# 3. Screen recording (if --record)
+if $RECORD; then
+    RECORD_FILE="$LOG_DIR/screen_record_$(date +%Y%m%d_%H%M%S).mp4"
+    REMOTE_FILE="/sdcard/screen_record_$(date +%Y%m%d_%H%M%S).mp4"
+    log_info "Starting screen recording (max 180 seconds). Press Ctrl+C to stop earlier."
+    # Use 180 (max allowed on most devices)
+    adb shell screenrecord --time-limit 180 "$REMOTE_FILE" &
+    PID_RECORD=$!
+    BG_PIDS+=($PID_RECORD)
+    log_info "Started screenrecord (PID: $PID_RECORD), remote: $REMOTE_FILE"
+fi
+
+# 4. Atrace (if --atrace)
+if $ATRACE; then
+    log_info "Starting atrace with categories: $ATRACE_CATEGORIES"
+    # --async_start: background tracing, -c: circular buffer, -b 32768: 32MB buffer
+    adb shell atrace --async_start -c -b 32768 $ATRACE_CATEGORIES
+    if [ $? -eq 0 ]; then
+        log_info "Atrace started successfully. Trace will be saved to: $ATRACE_FILE"
+        ATRACE_RUNNING=true
+    else
+        log_error "Failed to start atrace. Make sure your device supports it."
+        ATRACE_RUNNING=false
+    fi
+fi
+# 5. Simpleperf (if --simpleperf)
+if $SIMPLEPERF; then
+    # Check if adb has root
+    ADB_USER=$(adb shell whoami 2>/dev/null | tr -d '\r')
+    if [ "$ADB_USER" = "root" ]; then
+        SIMPLEPERF_OPTS="-a"
+        log_info "adb is root - using system-wide sampling."
+    else
+        # If user specified --app, use it; otherwise try to get foreground app
+        if [ -n "$SIMPLEPERF_APP" ]; then
+            SIMPLEPERF_OPTS="--app $SIMPLEPERF_APP"
+        else
+            # Get current foreground package (works on most devices)
+            FG_APP=$(adb shell dumpsys window windows 2>/dev/null | grep -E 'mCurrentFocus' | head -1 | sed -E 's/.*\/([^} ]+).*/\1/' | tr -d ' }')
+            if [ -n "$FG_APP" ]; then
+                SIMPLEPERF_OPTS="--app $FG_APP"
+                log_info "Detected foreground app: $FG_APP"
+            else
+                log_error "Cannot detect foreground app. Please specify with --app <package> or use root."
+                exit 1
+            fi
+        fi
+    fi
+
+    log_info "Starting simpleperf recording for $SIMPLEPERF_DURATION seconds with options: $SIMPLEPERF_OPTS"
+    adb shell /data/local/tmp/simpleperf record -g --duration "$SIMPLEPERF_DURATION" -f 1000 $SIMPLEPERF_OPTS -o "$SIMPLEPERF_REMOTE" &
+    PID_SIMPLEPERF=$!
+    BG_PIDS+=($PID_SIMPLEPERF)
+    log_info "Started simpleperf (PID: $PID_SIMPLEPERF), remote output: $SIMPLEPERF_REMOTE"
+fi
+
+# -----------------------------------------------
+# Cleanup on exit (Ctrl+C or normal)
+# -----------------------------------------------
+cleanup() {
+    # Prevent double execution
+    if [ "$CLEANUP_DONE" = "1" ]; then return; fi
+    CLEANUP_DONE=1
+
+    echo ""
+    log_info "Stopping all background processes..."
+
+    # Kill all background PIDs (logcat, screenrecord, simpleperf)
+    for pid in "${BG_PIDS[@]}"; do
+        if kill -0 "$pid" 2>/dev/null; then
+            log_debug "Killing PID $pid"
+            kill "$pid" 2>/dev/null
+            wait "$pid" 2>/dev/null
+        fi
+    done
+
+    # Pull screen recording (if started)
+    if $RECORD; then
+        log_info "Pulling screen recording to $RECORD_FILE ..."
+        adb pull "$REMOTE_FILE" "$RECORD_FILE" 2>/dev/null
+        if [ $? -eq 0 ]; then
+            log_info "Screen recording saved to $RECORD_FILE"
+            adb shell rm "$REMOTE_FILE" 2>/dev/null
+        else
+            log_error "Failed to pull screen recording (maybe file was not created?)"
+        fi
+    fi
+
+    # Stop atrace and dump the trace (if started)
+    if $ATRACE && [ "$ATRACE_RUNNING" = true ]; then
+        log_info "Stopping atrace and dumping trace to $ATRACE_FILE ..."
+        adb shell atrace --async_stop > "$ATRACE_FILE"
+        if [ -s "$ATRACE_FILE" ]; then
+            log_info "Atrace saved to $ATRACE_FILE (size: $(du -h "$ATRACE_FILE" | cut -f1))"
+        else
+            log_error "Atrace file is empty or failed to dump."
+        fi
+    fi
+
+    # Pull simpleperf data (if started)
+    if $SIMPLEPERF; then
+        log_info "Pulling simpleperf data to $SIMPLEPERF_LOCAL ..."
+        adb pull "$SIMPLEPERF_REMOTE" "$SIMPLEPERF_LOCAL" 2>/dev/null
+        if [ $? -eq 0 ]; then
+            log_info "Simpleperf data saved to $SIMPLEPERF_LOCAL (size: $(du -h "$SIMPLEPERF_LOCAL" | cut -f1))"
+            adb shell rm "$SIMPLEPERF_REMOTE" 2>/dev/null
+        else
+            log_error "Failed to pull simpleperf data."
+        fi
+    fi
+
+    log_info "All background processes terminated."
+    exit 0
+}
+
+trap cleanup EXIT SIGINT SIGTERM
+
+# -----------------------------------------------
+# Your test logic here
+# -----------------------------------------------
+log_info "Logging started. Press Ctrl+C to stop..."
+wait   # Keep the script alive until interrupted

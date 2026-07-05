@@ -50,3 +50,4 @@ _load_configs(){
 _load_pre_configs
 _load_configs
 start_tmux
+export PATH=$M_PLUGIN_DIR/configs/Scripts:$PATH
