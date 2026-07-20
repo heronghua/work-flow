@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Android 前台 Activity 时间线 (含 ANR/Crash 标记)</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body {
+            height: 100%;
+            background: #f5f7fb;
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+            color: #1e293b;
+            overflow: hidden;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            width: 100%;
+            padding: 6px 10px 10px 10px;
+            background: white;
+            border: none;
+            border-radius: 0;
+            box-shadow: none;
+            overflow: hidden;
+        }
+        h1 {
+            font-size: 22px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 2px;
+            flex-shrink: 0;
+        }
+        .sub {
+            font-size: 13px;
+            color: #64748b;
+            margin-bottom: 8px;
+            border-left: 4px solid #3b82f6;
+            padding-left: 12px;
+            flex-shrink: 0;
+        }
+        .input-area {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 8px;
+            flex-shrink: 0;
+        }
+        .input-area label {
+            font-weight: 500;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: #f1f5f9;
+            padding: 4px 14px;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .input-area label:hover { background: #e2e8f0; }
+        .input-area input[type="file"] { display: none; }
+        .input-area textarea {
+            flex: 1;
+            min-width: 200px;
+            height: 90px;
+            padding: 8px 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 12px;
+            font-family: 'Courier New', monospace;
+            resize: vertical;
+            background: #fafcff;
+        }
+        .input-area textarea:focus {
+            border-color: #3b82f6;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+        }
+        .actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin: 6px 0 8px;
+            flex-shrink: 0;
+        }
+        .btn {
+            background: #eef2f6;
+            border: none;
+            padding: 4px 16px;
+            border-radius: 30px;
+            font-weight: 500;
+            font-size: 13px;
+            cursor: pointer;
+            transition: 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .btn-primary { background: #3b82f6; color: white; }
+        .btn-primary:hover { background: #2563eb; }
+        .btn-success { background: #22c55e; color: white; }
+        .btn-success:hover { background: #16a34a; }
+        .btn-outline { background: transparent; border: 1px solid #cbd5e1; }
+        .btn-outline:hover { background: #f1f5f9; }
+        .stats {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            background: #f8fafc;
+            border-radius: 10px;
+            padding: 6px 14px;
+            margin-bottom: 8px;
+            font-size: 13px;
+            flex-shrink: 0;
+        }
+        .stats span { font-weight: 600; color: #0f172a; }
+
+        /* ----- 时间线图表 (弹性撑满) ----- */
+        .chart-wrapper {
+            flex: 1 1 auto;
+            overflow: auto;
+            border: 1px solid #e9edf2;
+            border-radius: 10px;
+            background: white;
+            padding: 4px 0;
+            min-height: 200px;
+        }
+        .chart-container {
+            position: relative;
+            min-width: 500px;
+            width: 100%;
+            height: auto;
+            font-size: 11px;
+        }
+        /* 事件标记行 */
+        .chart-row-marker {
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid #e2e8f0;
+            min-height: 20px;
+            background: #f8fafc;
+        }
+        .chart-label-marker {
+            flex: 0 0 120px;
+            padding-right: 8px;
+            text-align: right;
+            font-size: 10px;
+            color: #64748b;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .chart-track-marker {
+            flex: 1;
+            position: relative;
+            height: 20px;
+            background: #f8fafc;
+        }
+        .chart-marker {
+            position: absolute;
+            top: 2px;
+            width: 4px;
+            height: 16px;
+            border-radius: 2px;
+            z-index: 2;
+        }
+        .chart-marker-anr { background: #ef4444; }
+        .chart-marker-crash { background: #f59e0b; }
+
+        /* 普通行 */
+        .chart-row {
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid #f1f5f9;
+            min-height: 24px;
+        }
+        .chart-label {
+            flex: 0 0 120px;
+            padding-right: 8px;
+            text-align: right;
+            color: #1e293b;
+            font-weight: 500;
+            font-size: 11px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .chart-track {
+            flex: 1;
+            position: relative;
+            height: 20px;
+            background: #f8fafc;
+            margin: 2px 0;
+        }
+        .chart-bar {
+            position: absolute;
+            top: 1px;
+            height: 18px;
+            border-radius: 3px;
+            border: 1px solid rgba(255,255,255,0.5);
+            min-width: 2px;
+        }
+        .chart-time-axis {
+            padding-left: 120px;
+            height: 20px;
+            display: flex;
+            justify-content: space-between;
+            color: #94a3b8;
+            font-size: 10px;
+            border-top: 1px solid #e2e8f0;
+        }
+        .chart-time-axis span {
+            padding-top: 2px;
+        }
+        .no-data {
+            text-align: center;
+            color: #94a3b8;
+            padding: 40px 20px;
+            font-size: 14px;
+        }
+        .footer-note {
+            margin-top: 6px;
+            font-size: 11px;
+            color: #94a3b8;
+            border-top: 1px solid #e9edf2;
+            padding-top: 6px;
+            flex-shrink: 0;
+        }
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #0f172a;
+            color: white;
+            padding: 6px 18px;
+            border-radius: 30px;
+            font-weight: 500;
+            font-size: 13px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+            z-index: 999;
+        }
+        .toast.show { opacity: 1; }
+        @media (max-width: 600px) {
+            .chart-label { flex-basis: 80px; }
+            .chart-time-axis { padding-left: 80px; }
+            .chart-label-marker { flex-basis: 80px; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>📱 前台 Activity 时间线</h1>
+    <div class="sub">解析 <code>wm_on_resume_called</code> 绘制区间，同时标记 <code>am_anr</code> 和 <code>am_crash</code> 时间点</div>
+
+    <div class="input-area">
+        <label>📂 上传 <input type="file" id="fileInput" accept=".txt,.log,.events"></label>
+        <textarea id="logInput" placeholder="粘贴 logcat -b events 日志..."></textarea>
+    </div>
+
+    <div class="actions">
+        <button class="btn btn-primary" id="parseBtn">▶ 解析</button>
+        <button class="btn btn-success" id="exportBtn" disabled>⬇ 导出 JSON</button>
+        <button class="btn btn-outline" id="clearBtn">🗑 清空</button>
+    </div>
+
+    <div class="stats" id="statsArea" style="display:none;">
+        <div>📌 事件：<span id="eventCount">0</span></div>
+        <div>📱 Activity：<span id="appCount">0</span></div>
+        <div>⏱ 跨度：<span id="timeSpan">0 ms</span></div>
+        <div>⚠️ ANR：<span id="anrCount">0</span></div>
+        <div>💥 Crash：<span id="crashCount">0</span></div>
+    </div>
+
+    <!-- 图表区域 -->
+    <div class="chart-wrapper" id="chartWrapper">
+        <div id="noDataMessage" class="no-data">暂无数据，请上传日志或粘贴内容后点击「解析」</div>
+        <div id="chartContainer" class="chart-container" style="display:none;"></div>
+    </div>
+
+    <div class="footer-note">💡 支持格式：<code>wm_on_resume_called</code>、<code>am_anr</code>、<code>am_crash</code></div>
+</div>
+<div id="toast" class="toast"></div>
+
+<script src="timeline.js"></script>
+</body>
+</html>

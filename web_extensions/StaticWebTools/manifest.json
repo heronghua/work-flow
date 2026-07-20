@@ -1,0 +1,29 @@
+{
+  "manifest_version": 2,
+  "name": "StaticWebTools",
+  "version": "1.0.7",
+  "description": "工具集)",
+  "permissions": ["tabs"],
+  "omnibox": { "keyword": "tools" },
+  "background": {
+    "scripts": ["background.js"],
+    "persistent": true
+  },
+  "browser_action": {
+    "default_title": "打开工具集"
+  },
+  "commands": {
+    "_execute_browser_action": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+T"
+      },
+      "description": "打开工具集首页"
+    }
+  },
+  "content_security_policy": "script-src 'self' 'unsafe-inline'; object-src 'self'",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "heronghua1989@126.com"
+    }
+  }
+}

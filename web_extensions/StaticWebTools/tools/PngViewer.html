@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>PNG文件查看器</title>
+    <style>
+        /* 样式与原版相同，省略重复部分，请使用原样式 */
+        /* 为节约篇幅，此处仅保留核心样式，您可替换为原完整样式 */
+        * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { display:flex; min-height:100vh; background:#2c3e50; color:#ecf0f1; overflow:hidden; }
+        .container { display:flex; width:100%; height:100vh; }
+        .sidebar { width:300px; background:#34495e; padding:20px; display:flex; flex-direction:column; box-shadow:2px 0 10px rgba(0,0,0,0.2); z-index:10; overflow-y:auto; }
+        .main-content { flex:1; display:flex; flex-direction:column; position:relative; overflow:hidden; background:#2c3e50; }
+        h1 { font-size:1.8rem; margin-bottom:20px; color:#1abc9c; text-align:center; }
+        .folder-selector { margin-bottom:25px; }
+        .folder-btn { display:block; width:100%; padding:12px; background:#1abc9c; color:white; border:none; border-radius:4px; cursor:pointer; font-size:16px; font-weight:500; text-align:center; }
+        .folder-btn:hover { background:#16a085; }
+        .background-selector { margin-bottom:25px; }
+        .background-selector h2 { font-size:1.2rem; margin-bottom:12px; color:#bdc3c7; }
+        .bg-options { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
+        .bg-option { padding:10px; border:2px solid #2c3e50; border-radius:6px; cursor:pointer; text-align:center; transition:all 0.2s; }
+        .bg-option:hover { transform:translateY(-2px); box-shadow:0 4px 8px rgba(0,0,0,0.2); }
+        .bg-option.active { border-color:#1abc9c; box-shadow:0 0 0 2px rgba(26,188,156,0.4); }
+        .checkerboard { background:linear-gradient(45deg,#ccc 25%,transparent 25%), linear-gradient(-45deg,#ccc 25%,transparent 25%), linear-gradient(45deg,transparent 75%,#ccc 75%), linear-gradient(-45deg,transparent 75%,#ccc 75%); background-size:20px 20px; background-position:0 0,0 10px,10px -10px,-10px 0px; }
+        .red { background-color:#e74c3c; }
+        .white { background-color:#ecf0f1; color:#2c3e50; }
+        .black { background-color:#2c3e50; }
+        .file-info { margin-top:auto; padding:15px; background:#2c3e50; border-radius:6px; font-size:14px; }
+        .file-info h2 { margin-bottom:10px; color:#bdc3c7; }
+        .file-info p { margin:5px 0; }
+        .image-grid-container { flex:1; overflow:auto; padding:20px; }
+        .image-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:20px; align-content:flex-start; justify-items:center; transform-origin:top left; transition:transform 0.1s ease; width:100%; min-height:100%; }
+        .grid-item { display:flex; flex-direction:column; align-items:center; cursor:pointer; transition:all 0.2s; padding:10px; background:rgba(52,73,94,0.5); border-radius:0; width:100%; box-sizing:border-box; }
+        .grid-item:hover { transform:translateY(-5px); box-shadow:0 10px 20px rgba(0,0,0,0.2); background:rgba(52,73,94,0.8); }
+        .grid-item.active { border:2px solid #1abc9c; background:rgba(52,73,94,0.9); box-shadow:0 0 15px rgba(26,188,156,0.4); }
+        .item-container { position:relative; display:flex; justify-content:center; align-items:center; width:100%; height:100%; }
+        .item-bg { position:absolute; top:0; left:0; z-index:1; }
+        .grid-image { position:relative; z-index:2; display:block; border-radius:0; max-width:100%; max-height:200px; }
+        .item-filename { margin-top:10px; font-size:12px; color:#ecf0f1; text-align:center; word-break:break-all; max-height:32px; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; width:100%; }
+        .no-images { grid-column:1/-1; text-align:center; color:#bdc3c7; font-size:18px; padding:40px; }
+        .instructions { margin-top:20px; padding:15px; background:#2c3e50; border-radius:6px; font-size:14px; line-height:1.5; }
+        .instructions h2 { margin-bottom:10px; color:#bdc3c7; }
+        .instructions ul { padding-left:20px; }
+        .instructions li { margin-bottom:8px; }
+        .grid-header { display:flex; justify-content:space-between; align-items:center; padding:15px 20px 0; background:#2c3e50; }
+        .grid-title { font-size:1.2rem; color:#ecf0f1; }
+        .image-count { font-size:0.9rem; color:#bdc3c7; }
+        .control-buttons { margin-top:20px; display:flex; flex-direction:column; gap:10px; }
+        .control-btn { padding:10px; background:#3498db; color:white; border:none; border-radius:4px; cursor:pointer; font-size:14px; transition:all 0.3s; text-align:center; }
+        .control-btn:hover { background:#2980b9; }
+        .control-btn:disabled { background:#7f8c8d; cursor:not-allowed; }
+        .control-btn.active { background:#2ecc71; }
+        .toggle-btn { position:relative; overflow:hidden; }
+        .toggle-btn:active { transform:translateY(2px); box-shadow:0 2px 5px rgba(0,0,0,0.2); }
+        .toggle-btn.locked { background:#2ecc71; box-shadow:inset 0 2px 5px rgba(0,0,0,0.2); }
+        .fps-control { margin-top:10px; display:flex; align-items:center; gap:10px; }
+        .fps-control label { font-size:12px; color:#bdc3c7; }
+        .fps-control input { flex:1; background:#2c3e50; border:1px solid #7f8c8d; border-radius:4px; color:#ecf0f1; padding:5px; }
+        .loading { display:inline-block; width:20px; height:20px; border:3px solid rgba(255,255,255,.3); border-radius:50%; border-top-color:#1abc9c; animation:spin 1s ease-in-out infinite; }
+        .modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:100; justify-content:center; align-items:center; }
+        .modal-content { position:relative; max-width:90%; max-height:90%; display:flex; flex-direction:column; align-items:center; }
+        .modal-bg { position:absolute; top:0; left:0; width:100%; height:100%; z-index:1; }
+        .modal-image { position:relative; z-index:2; max-width:100%; max-height:80vh; box-shadow:0 5px 25px rgba(0,0,0,0.5); cursor:crosshair; }
+        .modal-controls { position:absolute; bottom:-60px; left:0; right:0; display:flex; justify-content:center; gap:10px; padding:10px; }
+        .modal-btn { padding:8px 15px; background:#3498db; color:white; border:none; border-radius:4px; cursor:pointer; font-size:14px; }
+        .modal-btn:hover { background:#2980b9; }
+        .modal-close { position:absolute; top:-40px; right:0; background:#e74c3c; color:white; border:none; border-radius:50%; width:30px; height:30px; font-size:18px; cursor:pointer; display:flex; justify-content:center; align-items:center; }
+        .modal-info { position:absolute; top:-40px; left:0; color:white; font-size:14px; }
+        .modal-lock-btn { position:absolute; top:-40px; left:50%; transform:translateX(-50%); padding:5px 10px; background:#9b59b6; color:white; border:none; border-radius:4px; cursor:pointer; font-size:12px; }
+        .modal-lock-btn:hover { background:#8e44ad; }
+        .zoom-info { position:fixed; bottom:20px; right:20px; background:rgba(0,0,0,0.7); color:white; padding:8px 12px; border-radius:4px; font-size:14px; z-index:20; display:none; }
+        .color-picker { position:absolute; top:10px; right:10px; background:rgba(0,0,0,0.7); color:white; padding:10px; border-radius:4px; font-size:12px; z-index:3; display:none; }
+        .color-preview { width:20px; height:20px; border:1px solid white; margin-right:5px; display:inline-block; vertical-align:middle; }
+        .color-info { display:inline-block; vertical-align:middle; }
+        @keyframes spin { to { transform:rotate(360deg); } }
+        @media (max-width:1024px) { .image-grid { grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); } }
+        @media (max-width:768px) { .container { flex-direction:column; } .sidebar { width:100%; height:auto; } .image-grid { grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:15px; padding:15px; } .color-picker { top:5px; right:5px; font-size:10px; padding:5px; } .color-preview { width:15px; height:15px; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <h1>PNG文件查看器</h1>
+            <div class="folder-selector">
+                <input type="file" id="folder-input" webkitdirectory directory multiple style="display:none;">
+                <button class="folder-btn" id="folder-btn">选择文件夹</button>
+            </div>
+            <div class="background-selector">
+                <h2>选择背景</h2>
+                <div class="bg-options">
+                    <div class="bg-option active checkerboard" data-bg="checkerboard">棋盘格</div>
+                    <div class="bg-option red" data-bg="red">红色</div>
+                    <div class="bg-option white" data-bg="white">白色</div>
+                    <div class="bg-option black" data-bg="black">黑色</div>
+                </div>
+            </div>
+            <div class="control-buttons">
+                <button class="control-btn toggle-btn" id="lock-size-btn" disabled>锁定当前尺寸</button>
+                <div class="fps-control">
+                    <label for="fps-input">帧率 (fps):</label>
+                    <input type="number" id="fps-input" min="1" max="60" value="33">
+                </div>
+            </div>
+            <div class="file-info">
+                <h2>文件信息</h2>
+                <p id="file-count">已加载PNG文件: 0</p>
+                <p id="current-file">当前文件: 无</p>
+                <p id="file-size">文件大小: 无</p>
+                <p id="image-dimensions">图像尺寸: 无</p>
+                <p id="selected-index">选中索引: 无</p>
+                <p id="locked-size">锁定尺寸: 无</p>
+                <p id="filtered-count">过滤后数量: 0</p>
+            </div>
+            <div class="instructions">
+                <h2>使用说明</h2>
+                <ul>
+                    <li>点击"选择文件夹"按钮选择包含PNG图像的文件夹</li>
+                    <li>点击网格中的图像查看文件信息</li>
+                    <li>双击图像可以在弹框中查看大图</li>
+                    <li>使用背景选项测试PNG图像的透明度效果</li>
+                    <li>点击"锁定当前尺寸"只显示与当前图片相同尺寸的图片</li>
+                    <li>在弹框中使用播放控制按钮可以自动播放图片</li>
+                    <li>可以调整帧率控制播放速度（默认33fps）</li>
+                    <li>使用Ctrl+滚轮可以缩放右侧图片网格</li>
+                    <li>在弹框中移动鼠标可以查看鼠标位置的RGBA颜色值</li>
+                    <li>支持的浏览器: Chrome, Edge, Firefox等现代浏览器</li>
+                </ul>
+            </div>
+        </div>
+        <div class="main-content">
+            <div class="grid-header">
+                <div class="grid-title">PNG图像</div>
+                <div class="image-count" id="image-count">共 0 个图像</div>
+            </div>
+            <div class="image-grid-container" id="image-grid-container">
+                <div class="image-grid" id="image-grid">
+                    <div class="no-images" id="no-images">请选择一个包含PNG图像的文件夹</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 模态框 -->
+    <div class="modal" id="image-modal">
+        <div class="modal-content">
+            <div class="modal-bg" id="modal-bg"></div>
+            <img class="modal-image" id="modal-image">
+            <div class="color-picker" id="color-picker">
+                <div class="color-preview" id="color-preview"></div>
+                <div class="color-info" id="color-info">RGBA: 0, 0, 0, 0</div>
+            </div>
+            <button class="modal-close" id="modal-close">×</button>
+            <div class="modal-info" id="modal-info"></div>
+            <button class="modal-lock-btn" id="modal-lock-btn">锁定此尺寸</button>
+            <div class="modal-controls">
+                <button class="modal-btn" id="modal-prev">上一张</button>
+                <button class="modal-btn" id="modal-play">播放</button>
+                <button class="modal-btn" id="modal-pause" disabled>暂停</button>
+                <button class="modal-btn" id="modal-next">下一张</button>
+                <button class="modal-btn" id="modal-stop">停止</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="zoom-info" id="zoom-info">缩放: 100%</div>
+	<script src="logger.js"> </script>
+	<script src="png_viewer.js"> </script>
+</body>
+</html>
