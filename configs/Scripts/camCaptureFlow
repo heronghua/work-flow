@@ -1,0 +1,107 @@
+#!/bin/bash
+# ================================================================
+#   File Name: camCaptureFlow
+#   Author: He Ronghua
+#   Mail: heronghua1989@126.com
+#   Created Time: Mon, Sep 14, 2026  8:15:25 PM
+# ================================================================
+
+# -----------------------------------------------
+# Configuration
+# -----------------------------------------------
+DEBUG=false
+LOG_FILE="/tmp/$(basename "$0").log"
+
+# -----------------------------------------------
+# Logging functions (Time, PID, TID)
+# -----------------------------------------------
+log_debug() {
+    if [[ "$DEBUG" == true ]]; then
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] [PID:$$] [TID:$$] [DEBUG] $*" | tee -a "$LOG_FILE"
+    fi
+}
+
+log_info() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] [PID:$$] [TID:$$] [INFO ] $*" | tee -a "$LOG_FILE"
+}
+
+log_error() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] [PID:$$] [TID:$$] [ERROR] $*" | tee -a "$LOG_FILE" >&2
+}
+
+# -----------------------------------------------
+# Parameter parsing
+# -----------------------------------------------
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --debug)
+            DEBUG=true
+            log_debug "Debug mode enabled manually."
+            shift
+            ;;
+        --search_dir|-sd)
+            if [[ -z "${2:-}" ]]; then
+                log_error "Option $1 requires a directory argument."
+                exit 1
+            fi
+            search_dir=$2
+            log_debug "Search dir set to: $search_dir"
+            shift 2
+            ;;
+        --help)
+            echo "Usage: $(basename "$0") [--debug] [--search_dir|-sd <directory>] [--help]"
+            echo "  --debug                 Enable verbose debug logs"
+            echo "  --search_dir, -sd DIR   Directory to search"
+            echo "  --help                  Show this help message"
+            exit 0
+            ;;
+        *)
+            log_error "Unknown option: $1"
+            exit 1
+            ;;
+    esac
+done
+
+# -----------------------------------------------
+# Your script logic starts here
+# -----------------------------------------------
+log_debug "Script started."
+log_debug "Debug logging is active."
+log_debug "search_dir is $search_dir"
+
+if [[ -z "${search_dir:-}" ]]; then
+    echo "Usage: $(basename "$0") --search_dir <directory>" >&2
+    exit 1
+fi
+
+patterns=(
+        "takePicture|captureIntent:2|STILL_CAPTUER"
+        "abortCapture|ppl_context.*flush"
+        "configSession|configStream"
+)
+
+combined_pattern=$(IFS='|'; echo "${patterns[*]}")
+log_debug "combined_pattern is $combined_pattern"
+
+# search the pattern in search directory
+grep -EnrI -- "$combined_pattern" "$search_dir" | \
+awk -F: -v pattern="$combined_pattern" '
+BEGIN {
+    purple = "\033[35m"
+    green = "\033[32m"
+    red = "\033[31m"
+    reset = "\033[0m"
+}
+{
+    file = $1
+    line = $2
+    message = $0
+    sub(/^[^:]*:[0-9]+:/, "", message)
+    if (!seen[message]++) {
+        gsub(pattern, red "&" reset, message)
+        print purple file reset ":" green line reset ":" message
+    }
+}'
+
+log_debug "Script finished."
+exit 0
