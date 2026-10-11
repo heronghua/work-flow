@@ -18,7 +18,7 @@ if ! command -v fzf &>/dev/null; then
 fi
 
 local M_COMPLETION_DIR="${0:A:h}"
-source ${M_COMPLETION_DIR}/base_completion.sh
+source ${M_COMPLETION_DIR}/base_completion.zsh
 FZF_VI_OPTS="
   --height 40% 
   --reverse 
