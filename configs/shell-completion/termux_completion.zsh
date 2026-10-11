@@ -17,7 +17,6 @@ fi
 local M_COMPLETION_DIR="${0:A:h}"
 source ${M_COMPLETION_DIR}/base_completion.sh
 
-typeset -ga FZF_VI_OPTS
 FZF_VI_OPTS="
   --reverse
   --preview 'bat --color=always {}'

@@ -23,7 +23,7 @@ vi-fzf-completion() {
         if command -v fd &>/dev/null; then
             selected=$(fd --type f --hidden --exclude .git 2>/dev/null | fzf ${FZF_VI_OPTS[@]})
         else
-            selected=$(find . -type f 2>/dev/null | fzf ${FZF_VI_OPTS[@]})
+            selected=$(find . -type f 2>/dev/null | fzf ${FZF_VI_OPTS})
         fi
 
         # 清除当前命令行
