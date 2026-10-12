@@ -16,15 +16,15 @@
 #include <unistd.h>
 #endif
 
-// 自定义回调：捕获 screenrecord 的 PID（符合 StandardStreamsCallbackInterface 要求）
 class CollectPidCallback : public StandardStreamsCallbackInterface {
 public:
     std::string output;
-    void OnStdout(const char* buffer, int length) override {
+    bool OnStdout(const char* buffer, size_t length) override {
         output.append(buffer, length);
+        return true;
     }
-    void OnStderr(const char* buffer, int /*length*/) override {
-        // 忽略 stderr
+    bool OnStderr(const char* buffer, size_t /*length*/) override {
+        return false;
     }
     int Done(int /*status*/) override {
         return 0;
@@ -36,7 +36,7 @@ int MyBugreport::DoIt(int argc, const char** argv) {
     if (argc == 2) {
         output_path = argv[1];
     } else if (argc > 2) {
-        return syntax_error("adb mybugreport [PATH]");
+        return line_printer_.Print("adb mybugreport [PATH]",LinePrinter::ERROR);
     }
     return RunScreenRecord(output_path);
 }
