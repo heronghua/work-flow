@@ -1,0 +1,107 @@
+#!/bin/bash
+# ================================================================
+#   File Name: TaskQueue
+#   Author: He Ronghua
+#   Mail: heronghua1989@126.com
+#   Created Time: Mon, Sep 14, 2026  8:15:25 PM
+# ================================================================
+
+# -----------------------------------------------
+# Configuration
+# -----------------------------------------------
+DEBUG=false
+
+is_termux() {
+    [[ -d "/data/data/com.termux/files/usr" ]] || 
+    [[ -n "$TERMUX_VERSION" ]] || 
+    [[ "$PREFIX" == "/data/data/com.termux/files/usr"* ]] ||
+    { [[ $(uname -o) == "Android" ]] && command -v pkg >/dev/null; }
+}
+
+if ! is_termux ; then
+   TMP_DIR="/tmp"
+else
+   TMP_DIR="${PREFIX}"
+fi
+
+LOG_FILE="${TMP_DIR}/$(basename "$0").log"
+
+TASK_QUEUE_DIR=${HOME}/.taskqueue
+if [[ ! -d ${TASK_QUEUE_DIR} ]]; then
+    mkdir ${TASK_QUEUE_DIR} \
+    || echo "[ERROR] ${TASK_QUEUE_DIR} does not exist" \
+    &&exit 1
+fi
+
+# -----------------------------------------------
+# Logging functions (Time, PID, TID)
+# -----------------------------------------------
+log_debug() {
+    if [[ "$DEBUG" == true ]]; then
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] [PID:$$] [TID:$$] [DEBUG] $*" | tee -a "$LOG_FILE"
+    fi
+}
+
+log_info() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] [PID:$$] [TID:$$] [INFO ] $*" | tee -a "$LOG_FILE"
+}
+
+log_error() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] [PID:$$] [TID:$$] [ERROR] $*" | tee -a "$LOG_FILE" >&2
+}
+
+# -----------------------------------------------
+# Parameter parsing
+# -----------------------------------------------
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --debug)
+            DEBUG=true
+            if [[ -f ${LOG_FILE} ]]; then
+                touch ${LOG_FILE}
+            fi
+            shift
+            ;;
+        --add|-a)
+            if [[ -z "${2:-}" ]]; then
+                echo "Option $1 requires a task  argument."
+                exit 1
+            fi
+            task=$2
+            shift 2
+            ;;
+        --run|-r)
+            shift
+            ;;
+        --help)
+            echo "Usage: $(basename "$0") [--debug] [--add|-a <task>] [--run|-r] [--help]"
+            echo "  --debug                 Enable verbose debug logs"
+            echo "  --add, -a               Add a task."
+            echo "  --run, -r               Run a TaskQueue."
+            echo "  --help                  Show this help message"
+            exit 0
+            ;;
+        *)
+            log_error "Unknown option: $1"
+            exit 1
+            ;;
+    esac
+done
+
+# -----------------------------------------------
+# Your script logic starts here
+# -----------------------------------------------
+log_debug "Script started."
+log_debug "Debug logging is active."
+if [[ ! "${task}" == ""  ]]; then
+        log_debug "task is $task"
+        prefix_date=$(date +%Y%m%d%H%M%S%N)
+        task_encode=$(echo $task|base64)
+        task_combine="${prefix_date}_${task_encode}"
+        touch ${TASK_QUEUE_DIR}/$prefix_date
+        echo $task_encode > ${TASK_QUEUE_DIR}/$prefix_date
+        log_debug "task_combine is $task_combine"
+        exit 0
+fi
+log_debug "Script finished."
+exit 0
