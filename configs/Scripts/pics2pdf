@@ -1,0 +1,41 @@
+#!/usr/bin/python
+
+from PIL import Image, ImageOps
+from pathlib import Path
+import re
+
+EXTS = {'.png', '.jpg', '.jpeg'}
+TARGET_WIDTH = 1600      # 目标宽度（像素）
+RESOLUTION = 300         # PDF 中 1200px / 300dpi = 4 英寸宽
+
+def natural_key(p):
+    return [int(t) if t.isdigit() else t.lower()
+            for t in re.split(r'(\d+)', p.name)]
+
+def load_rgb(f):
+    im = Image.open(f)
+    im = ImageOps.exif_transpose(im)          # 修正手机 JPG 的旋转
+    if im.mode in ('RGBA', 'LA') or (im.mode == 'P' and 'transparency' in im.info):
+        im = im.convert('RGBA')
+        bg = Image.new('RGB', im.size, 'white')
+        bg.paste(im, mask=im.split()[-1])
+        return bg
+    return im.convert('RGB')
+
+files = sorted(
+    (p for p in Path('.').iterdir()
+     if p.is_file() and p.suffix.lower() in EXTS),
+    key=natural_key
+)
+
+images = []
+for f in files:
+    im = load_rgb(f)
+    w, h = im.size
+    new_h = max(1, round(h * TARGET_WIDTH / w))
+    im = im.resize((TARGET_WIDTH, new_h), Image.LANCZOS)
+    images.append(im)
+
+if images:
+    images[0].save('output.pdf', save_all=True,
+                   append_images=images[1:], resolution=RESOLUTION)
