@@ -79,8 +79,8 @@ consume_one_task() {
     # Task stdout/stderr redirect to independent task log file, not mix with script main log
     # --------------------------
     EXIT_CODE=0
-    if ! timeout "${TASK_TIMEOUT_SEC}" bash -c "${first_task_content}" >"${task_logfile}" 2>&1 ; then
-        EXIT_CODE=$?
+    if ! timeout "${TASK_TIMEOUT_SEC}" bash -c "${first_task_content}" 2>&1|tee -a "${task_logfile}" ; then
+        EXIT_CODE=${PIPESTATUS[0]}
     fi
 
     if [[ "${EXIT_CODE}" -eq 0 ]]; then
