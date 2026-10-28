@@ -15,7 +15,7 @@ typeset -g FZF_VI_OPTS=(
 # 定义快捷键：vi + Tab 打开并执行 fzf
 vi-fzf-completion() {
     # 只处理以 "vi " 开头的命令
-    if [[ $LBUFFER == vi\ * ]]; then
+    if [[ $LBUFFER =~ '^vi[[:space:]]+$' ]]; then
         # 保存当前命令行内容
         local original_buffer=$LBUFFER
 
