@@ -6,7 +6,6 @@
 #   Created Time: Mon, Sep 14, 2026  8:15:25 PM
 # ================================================================
 set -eo pipefail
-
 # -----------------------------------------------
 # Configuration
 # -----------------------------------------------
@@ -15,6 +14,7 @@ USE_INOTIFY=true
 #24h
 TASK_TIMEOUT_SEC=86400
 POLLING_INTERVAL=10
+
 is_termux() {
     [[ -d "/data/data/com.termux/files/usr" ]] ||
     [[ -n "$TERMUX_VERSION" ]] ||
@@ -31,8 +31,9 @@ fi
 LOG_FILE="${TMP_DIR}/$(basename "$0").log"
 TASK_QUEUE_DIR="${HOME}/.taskqueue"
 TASK_FAIL_DIR="${HOME}/.taskqueue_fail"
+TASK_LOG_DIR="${HOME}/.taskqueue_log"
 
-mkdir -p "${TASK_QUEUE_DIR}" "${TASK_FAIL_DIR}" || {
+mkdir -p "${TASK_QUEUE_DIR}" "${TASK_FAIL_DIR}" "${TASK_LOG_DIR}" || {
     echo "[ERROR] Failed to create task queue directories"
     exit 1
 }
@@ -60,33 +61,34 @@ log_error() {
 consume_one_task() {
     local first_task_id="$1"
     local task_file="${TASK_QUEUE_DIR}/${first_task_id}"
+    local task_logfile="${TASK_LOG_DIR}/${first_task_id}.log"
 
     if [[ ! -f "${task_file}" ]]; then
         return 0
     fi
-
     if ! first_task_content=$(base64 --decode < "${task_file}"); then
         log_error "task ${first_task_id} base64 decode failed, move to fail dir"
         mv -f "${task_file}" "${TASK_FAIL_DIR}/" || true
         return 0
     fi
 
-    log_info "executing ${first_task_id}, content is \"${first_task_content}\""
+    log_info "executing ${first_task_id}, content=\"${first_task_content}\", task_log=${task_logfile}"
 
     # --------------------------
     # Execute task command with timeout protection
+    # Task stdout/stderr redirect to independent task log file, not mix with script main log
     # --------------------------
     EXIT_CODE=0
-    if ! timeout "${TASK_TIMEOUT_SEC}" bash -c "${first_task_content}"; then
+    if ! timeout "${TASK_TIMEOUT_SEC}" bash -c "${first_task_content}" >"${task_logfile}" 2>&1 ; then
         EXIT_CODE=$?
     fi
 
     if [[ "${EXIT_CODE}" -eq 0 ]]; then
-        log_info "task ${first_task_id} finished, content=\"${first_task_content}\""
+        log_info "task ${first_task_id} finished, content=\"${first_task_content}\", task_log=${task_logfile}"
         log_debug "task ${first_task_id} execute success, remove task file"
         rm -f "${task_file}"
     else
-        log_error "task ${first_task_id} execute failed, exit code ${EXIT_CODE}, content=\"${first_task_content}\", move to fail dir"
+        log_error "task ${first_task_id} execute failed, exit code ${EXIT_CODE}, content=\"${first_task_content}\", task_log=${task_logfile}, move to fail dir"
         mv -f "${task_file}" "${TASK_FAIL_DIR}/" || true
     fi
 }
@@ -111,7 +113,6 @@ scan_and_consume_all() {
 # -----------------------------------------------
 needRun=false
 task=""
-
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --debug)
@@ -153,8 +154,9 @@ log_debug "Script started."
 if [[ -n "${task}" ]]; then
     log_debug "receive task payload: ${task}"
     prefix_date=$(date +%Y%m%d%H%M%S%N)
-    # Prepend cd "$PWD"; so task runs under the directory when added
-    task_with_cd="cd '${PWD}'; ${task}"
+    # fix single quote escape for path contains single quote
+    escaped_pwd=$(printf "%s" "$PWD" | sed "s/'/'\"'\"'/g")
+    task_with_cd="cd '${escaped_pwd}'; ${task}"
     task_encode=$(echo -n "$task_with_cd" | base64)
     echo "${task_encode}" > "${TASK_QUEUE_DIR}/${prefix_date}"
     log_debug "task file created: ${prefix_date}, wrapped with cd to PWD=${PWD}"
@@ -166,12 +168,11 @@ fi
 # -----------------------------------------------
 if [[ "${needRun}" == "true" ]]; then
     log_info "task queue consumer started"
-
     # consume existing leftover tasks on startup
     scan_and_consume_all
 
     if ! command -v inotifywait >/dev/null 2>&1; then
-        log_error "inotifywait not found, fallback to 3s polling mode"
+        log_error "inotifywait not found, fallback to polling mode, interval ${POLLING_INTERVAL}s"
         USE_INOTIFY=false
     fi
 
