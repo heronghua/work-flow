@@ -12,8 +12,9 @@ set -eo pipefail
 # -----------------------------------------------
 DEBUG=false
 USE_INOTIFY=true
-TASK_TIMEOUT_SEC=300
-
+#24h
+TASK_TIMEOUT_SEC=86400
+POLLING_INTERVAL=10
 is_termux() {
     [[ -d "/data/data/com.termux/files/usr" ]] ||
     [[ -n "$TERMUX_VERSION" ]] ||
@@ -190,7 +191,7 @@ if [[ "${needRun}" == "true" ]]; then
         # fallback polling
         while true; do
             scan_and_consume_all
-            sleep 3
+            sleep  ${POLLING_INTERVAL}
         done
     fi
 fi
