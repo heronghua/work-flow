@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -euo pipefail
+clipcopy() {
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        pbcopy
+    elif [[ "$OSTYPE" == "cygwin" ]]; then
+        cat > /dev/clipboard
+    elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        if command -v wl-copy &>/dev/null; then
+            wl-copy
+        elif command -v xclip &>/dev/null; then
+            xclip -selection clipboard
+        fi
+    elif [[ -n "${TERMUX_VERSION:-}" ]]; then
+        termux-clipboard-set
+    fi
+}
+if [[ $# -ne 1 ]]; then echo "Usage: file2Clip FILE"; exit 1; fi
+clipcopy < "$1"
+echo "OK: $1 -> clipboard"

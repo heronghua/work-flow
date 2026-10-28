@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+# clip2File: read system clipboard text and write to file
+# Usage:
+#   clip2File out.txt        # overwrite
+#   clip2File -a out.txt     # append
+#   clip2File -h             # help
+
+set -euo pipefail
+
+# 读取剪贴板
+clippaste() {
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        pbpaste
+    elif [[ "$OSTYPE" == "cygwin" ]]; then
+        cat /dev/clipboard
+    elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        if command -v wl-paste &>/dev/null; then
+            wl-paste
+        elif command -v xclip &>/dev/null; then
+            xclip -selection clipboard -o
+        elif command -v xsel &>/dev/null; then
+            xsel -b
+        else
+            echo "ERROR: No clipboard tool found (install xclip / wl-paste)" >&2
+            return 1
+        fi
+    elif [[ -n "${TERMUX_VERSION:-}" ]]; then
+        if ! command -v termux-clipboard-get &>/dev/null; then
+            echo "ERROR: termux-api missing, pkg install termux-api" >&2
+            return 1
+        fi
+        termux-clipboard-get
+    else
+        echo "ERROR: unknown platform OSTYPE=$OSTYPE" >&2
+        return 1
+    fi
+}
+
+usage() {
+    cat <<EOF
+clip2File -- dump clipboard text into file
+Usage:
+  clip2File FILE        overwrite file with clipboard content
+  clip2File -a FILE     append clipboard content to file
+  clip2File -h          show this help
+EOF
+}
+
+APPEND=0
+while getopts "ah" opt; do
+    case "$opt" in
+        a) APPEND=1 ;;
+        h) usage; exit 0 ;;
+        *) usage; exit 1 ;;
+    esac
+done
+shift $((OPTIND -1))
+
+if [[ $# -ne 1 ]]; then
+    usage
+    exit 1
+fi
+TARGET="$1"
+
+if [[ $APPEND -eq 1 ]]; then
+    clippaste >> "$TARGET"
+else
+    clippaste > "$TARGET"
+fi
+
+echo "OK: clipboard -> $TARGET $([ $APPEND -eq 1 ] && echo '[append]' || echo '[overwrite]')"
+
