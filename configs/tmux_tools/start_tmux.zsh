@@ -16,6 +16,8 @@ start_tmux() {
                    tmux new-session -d -s $SESSION_MAIN -n logToAnalyze
                    tmux new-window -t $SESSION_MAIN:1 -n SourceCode
                    tmux new-window -t $SESSION_MAIN:2 -n Gtd
+                   tmux send-keys -t "${SESSION_MAIN}:2.0" "vim +GtdReview +on" C-m
+                   tmux send-keys -t "${SESSION_MAIN}:1.0" "z work-flow" C-m
                    log_debug "adding windws"
                    tmux source-file $TMUX_CONFIG_PATH
                fi
