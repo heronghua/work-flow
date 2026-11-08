@@ -118,7 +118,7 @@ if $RECORD; then
     REMOTE_FILE="/sdcard/screen_record_$(date +%Y%m%d_%H%M%S).mp4"
     log_info "Starting screen recording (max 180 seconds). Press Ctrl+C to stop earlier."
     # Use 180 (max allowed on most devices)
-    adb shell screenrecord --time-limit 180 "$REMOTE_FILE" &
+    adb shell screenrecord --bugreport --time-limit 180 "$REMOTE_FILE" &
     PID_RECORD=$!
     BG_PIDS+=($PID_RECORD)
     log_info "Started screenrecord (PID: $PID_RECORD), remote: $REMOTE_FILE"
