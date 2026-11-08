@@ -5,8 +5,6 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-set(PUBLISH_DIR "/usr/bin/")
-
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(OpenCV REQUIRED opencv)
 
@@ -14,12 +12,10 @@ include_directories(${OpenCV_INCLUDE_DIRS})
 link_directories(${OpenCV_LIBRARY_DIRS})
 
 add_executable(NV212PNG src/NV212PNG.cpp)
+target_link_options(NV212PNG PRIVATE "-Wl,--allow-shlib-undefined")
 target_link_libraries(NV212PNG ${OpenCV_LIBRARIES})
-set_target_properties(NV212PNG PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PUBLISH_DIR})
-
 
 add_executable(RetryUntilSuccess src/RetryUntilSuccess.cpp)
-set_target_properties(RetryUntilSuccess PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PUBLISH_DIR})
 
-add_executable(LearnEnhance src/LearnEnhance.cpp)
-set_target_properties(LearnEnhance PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PUBLISH_DIR})
+install(TARGETS NV212PNG RetryUntilSuccess 
+        RUNTIME DESTINATION bin)
