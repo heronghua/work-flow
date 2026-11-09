@@ -1,0 +1,106 @@
+#!/usr/bin/env bash
+set -e
+
+msg_file="$1"
+msg_source="${2:-}"
+
+case "$msg_source" in
+  message|template|merge|squash|commit)
+    exit 0
+    ;;
+esac
+
+nl=$'\n'
+tab=$'\t'
+
+# ---- 1. Template in memory ------------------------------------------------
+buf=$(cat <<'MSG'
+
+
+[Description]
+
+[Test]
+
+# Format:
+#   <title>
+#
+#   [Description]
+#   <what changed and why>
+#
+#   [Test]
+#   <how it was verified>
+#
+# Rules:
+#   - title is required (first non-comment, non-empty line)
+#   - [Description] and [Test] are required and must not be empty
+#   - [Description] must appear before [Test]
+#   - ASCII characters only
+#   - lines starting with '#' are ignored
+
+# Please enter the commit message for your changes. Lines starting
+# with '#' will be ignored, and an empty message aborts the commit.
+MSG
+)
+buf+=$nl
+
+# ---- 2. Collect status with porcelain v1 ----------------------------------
+staged=""
+unstaged=""
+untracked=""
+
+while IFS= read -r line; do
+  [ -z "$line" ] && continue
+  x="${line:0:1}"
+  y="${line:1:1}"
+  path="${line:3}"
+
+  if [ "$x" = "?" ] && [ "$y" = "?" ]; then
+    untracked+="$path"$'\n'
+    continue
+  fi
+
+  [ "$x" != " " ] && staged+="$x"$'\t'"$path"$'\n'
+  [ "$y" != " " ] && unstaged+="$y"$'\t'"$path"$'\n'
+done < <(git status --porcelain 2>/dev/null || true)
+
+# ---- 3. Helpers ------------------------------------------------------------
+describe() {
+  case "$1" in
+    M) echo "modified" ;;
+    A) echo "new file" ;;
+    D) echo "deleted" ;;
+    R) echo "renamed" ;;
+    C) echo "copied" ;;
+    U) echo "unmerged" ;;
+    T) echo "typechange" ;;
+    *) echo "modified" ;;
+  esac
+}
+
+# ---- 4. Append Git-style status block into the same buffer ----------------
+append_tracked() {
+  local label="$1" data="$2" st p
+  [ -z "$data" ] && return
+  buf+="#${nl}# ${label}${nl}"
+  while IFS=$'\t' read -r st p; do
+    [ -z "$st" ] && continue
+    buf+="#${tab}$(describe "$st"):   ${p}${nl}"
+  done <<< "$data"
+}
+
+append_untracked() {
+  local data="$1" p
+  [ -z "$data" ] && return
+  buf+="#${nl}# Untracked files:${nl}"
+  while IFS= read -r p; do
+    [ -z "$p" ] && continue
+    buf+="#${tab}${p}${nl}"
+  done <<< "$data"
+}
+
+append_tracked "Changes to be committed:"          "$staged"
+append_tracked "Changes not staged for commit:"    "$unstaged"
+append_untracked                                    "$untracked"
+
+# ---- 5. Write the buffer back in one shot ---------------------------------
+printf '%s' "$buf" > "$msg_file"

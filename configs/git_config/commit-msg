@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+set -e
+
+msg_file="$1"
+
+if [ -z "$msg_file" ]; then
+  echo "Error: commit-msg hook received no file path." >&2
+  exit 1
+fi
+
+# Reject non-ASCII characters (e.g. Chinese) anywhere in the message.
+if LC_ALL=C grep -qn '[^[:print:][:blank:]]' "$msg_file"; then
+  echo "Error: commit message must contain only ASCII characters." >&2
+  exit 1
+fi
+
+awk '
+BEGIN {
+  title = ""
+  title_seen = 0
+  section = ""
+  desc = 0
+  test = 0
+  desc_content = 0
+  test_content = 0
+  order_ok = 1
+}
+{
+  line = $0
+  sub(/\r$/, "", line)
+
+  # Skip comments and blank lines.
+  if (line ~ /^#/) next
+  if (line ~ /^[[:space:]]*$/) next
+
+  # Section markers.
+  if (line ~ /^\[Description\][[:space:]]*$/) {
+    if (test) order_ok = 0
+    section = "desc"
+    desc = 1
+    next
+  }
+  if (line ~ /^\[Test\][[:space:]]*$/) {
+    section = "test"
+    test = 1
+    next
+  }
+
+  # First real line becomes the title.
+  if (!title_seen) {
+    title = line
+    title_seen = 1
+    section = ""
+    next
+  }
+
+  if (section == "desc") desc_content = 1
+  if (section == "test") test_content = 1
+}
+END {
+  has_error = 0
+  if (title == "") {
+    print "Error: title is required (first non-comment, non-empty line)." > "/dev/stderr"
+    has_error = 1
+  }
+  if (!desc) {
+    print "Error: [Description] section is missing." > "/dev/stderr"
+    has_error = 1
+  }
+  if (!test) {
+    print "Error: [Test] section is missing." > "/dev/stderr"
+    has_error = 1
+  }
+  if (!order_ok) {
+    print "Error: [Description] must come before [Test]." > "/dev/stderr"
+    has_error = 1
+  }
+  if (!desc_content) {
+    print "Error: [Description] section must not be empty." > "/dev/stderr"
+    has_error = 1
+  }
+  if (!test_content) {
+    print "Error: [Test] section must not be empty." > "/dev/stderr"
+    has_error = 1
+  }
+  if (has_error) exit 1
+}
+' "$msg_file"
