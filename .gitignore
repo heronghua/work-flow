@@ -1,1 +1,3 @@
 build/
+configs/DecScripts/*.*
+!configs/DecScripts/.gitkeep
